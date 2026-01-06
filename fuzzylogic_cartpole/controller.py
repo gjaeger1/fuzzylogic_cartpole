@@ -40,18 +40,11 @@ class FuzzyCartPoleController:
         self.angle.negative = S(-0.5, -0.05)
         self.angle.zero = triangular(-0.1, 0.1, c=0.0)
         self.angle.positive = R(0.05, 0.5)
-
         # Pole angular velocity: typically -inf to inf, but practically -2 to 2
         self.angular_velocity = Domain("angular_velocity", -4.0, 4.0, res=0.01)
-        self.angular_velocity.strong_negative = trapezoid(
-            -5.0, -4.0, -2.0, -0.5
-        )  # S(-4.0, -0.5)
-        self.angular_velocity.negative = triangular(-1.0, 0.0, c=-0.5)
+        self.angular_velocity.negative = S(-4.0, -0.5)
         self.angular_velocity.zero = triangular(-0.5, 0.5, c=0.0)
-        self.angular_velocity.positive = triangular(0.0, 1.0, c=0.5)
-        self.angular_velocity.strong_positive = trapezoid(
-            0.5, 2.0, 4.0, 5.0
-        )  # R(0.5, 4.0)
+        self.angular_velocity.positive = R(0.5, 4.0)
 
         # Define output domain
         # Action: 0 (push left) or 1 (push right)
@@ -69,189 +62,507 @@ class FuzzyCartPoleController:
         # Combine all rules into a single Rule object
         self.rules = Rule(
             {
-                # If pole is falling left (negative angle) and angular velocity is negative, push left strongly
+                # Complete rule base covering all 81 combinations (3^4)
+                # Format: (position, velocity, angle, angular_velocity): action
+                # Priority: Angle control > Angular velocity > Position > Velocity
+                # ========== POSITION: NEGATIVE ==========
+                # Position: negative, Velocity: negative
                 (
-                    self.angular_velocity.zero,
-                    self.angle.zero,
-                    self.position.zero,
-                    self.velocity.zero,
-                ): self.action.nothing,
-                (
+                    self.position.negative,
+                    self.velocity.negative,
+                    self.angle.negative,
                     self.angular_velocity.negative,
-                    self.angle.zero,
-                    self.position.zero,
-                    self.velocity.zero,
-                ): self.action.left,
-                (
-                    self.angular_velocity.positive,
-                    self.angle.zero,
-                    self.position.zero,
-                    self.velocity.zero,
-                ): self.action.right,
-                (
-                    self.angular_velocity.strong_negative,
-                    self.angle.zero,
-                    self.position.zero,
-                    self.velocity.zero,
                 ): self.action.strong_left,
                 (
-                    self.angular_velocity.strong_positive,
+                    self.position.negative,
+                    self.velocity.negative,
+                    self.angle.negative,
+                    self.angular_velocity.zero,
+                ): self.action.left,
+                (
+                    self.position.negative,
+                    self.velocity.negative,
+                    self.angle.negative,
+                    self.angular_velocity.positive,
+                ): self.action.nothing,
+                (
+                    self.position.negative,
+                    self.velocity.negative,
                     self.angle.zero,
-                    self.position.zero,
-                    self.velocity.zero,
-                ): self.action.strong_right,
-                # position control
+                    self.angular_velocity.negative,
+                ): self.action.left,
                 (
                     self.position.negative,
                     self.velocity.negative,
                     self.angle.zero,
                     self.angular_velocity.zero,
+                ): self.action.left,
+                (
+                    self.position.negative,
+                    self.velocity.negative,
+                    self.angle.zero,
+                    self.angular_velocity.positive,
+                ): self.action.nothing,
+                (
+                    self.position.negative,
+                    self.velocity.negative,
+                    self.angle.positive,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.negative,
+                    self.velocity.negative,
+                    self.angle.positive,
+                    self.angular_velocity.zero,
+                ): self.action.left,
+                (
+                    self.position.negative,
+                    self.velocity.negative,
+                    self.angle.positive,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                # Position: negative, Velocity: zero
+                (
+                    self.position.negative,
+                    self.velocity.zero,
+                    self.angle.negative,
+                    self.angular_velocity.negative,
                 ): self.action.strong_left,
                 (
+                    self.position.negative,
+                    self.velocity.zero,
+                    self.angle.negative,
+                    self.angular_velocity.zero,
+                ): self.action.left,
+                (
+                    self.position.negative,
+                    self.velocity.zero,
+                    self.angle.negative,
+                    self.angular_velocity.positive,
+                ): self.action.nothing,
+                (
+                    self.position.negative,
+                    self.velocity.zero,
+                    self.angle.zero,
+                    self.angular_velocity.negative,
+                ): self.action.left,
+                (
+                    self.position.negative,
+                    self.velocity.zero,
+                    self.angle.zero,
+                    self.angular_velocity.zero,
+                ): self.action.left,
+                (
+                    self.position.negative,
+                    self.velocity.zero,
+                    self.angle.zero,
+                    self.angular_velocity.positive,
+                ): self.action.left,
+                (
+                    self.position.negative,
+                    self.velocity.zero,
+                    self.angle.positive,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.negative,
+                    self.velocity.zero,
+                    self.angle.positive,
+                    self.angular_velocity.zero,
+                ): self.action.nothing,
+                (
+                    self.position.negative,
+                    self.velocity.zero,
+                    self.angle.positive,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                # Position: negative, Velocity: positive
+                (
+                    self.position.negative,
+                    self.velocity.positive,
+                    self.angle.negative,
+                    self.angular_velocity.negative,
+                ): self.action.strong_left,
+                (
+                    self.position.negative,
+                    self.velocity.positive,
+                    self.angle.negative,
+                    self.angular_velocity.zero,
+                ): self.action.left,
+                (
+                    self.position.negative,
+                    self.velocity.positive,
+                    self.angle.negative,
+                    self.angular_velocity.positive,
+                ): self.action.left,
+                (
+                    self.position.negative,
+                    self.velocity.positive,
+                    self.angle.zero,
+                    self.angular_velocity.negative,
+                ): self.action.left,
+                (
+                    self.position.negative,
+                    self.velocity.positive,
+                    self.angle.zero,
+                    self.angular_velocity.zero,
+                ): self.action.left,
+                (
+                    self.position.negative,
+                    self.velocity.positive,
+                    self.angle.zero,
+                    self.angular_velocity.positive,
+                ): self.action.nothing,
+                (
+                    self.position.negative,
+                    self.velocity.positive,
+                    self.angle.positive,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.negative,
+                    self.velocity.positive,
+                    self.angle.positive,
+                    self.angular_velocity.zero,
+                ): self.action.nothing,
+                (
+                    self.position.negative,
+                    self.velocity.positive,
+                    self.angle.positive,
+                    self.angular_velocity.positive,
+                ): self.action.nothing,
+                # ========== POSITION: ZERO ==========
+                # Position: zero, Velocity: negative
+                (
+                    self.position.zero,
+                    self.velocity.negative,
+                    self.angle.negative,
+                    self.angular_velocity.negative,
+                ): self.action.strong_left,
+                (
+                    self.position.zero,
+                    self.velocity.negative,
+                    self.angle.negative,
+                    self.angular_velocity.zero,
+                ): self.action.left,
+                (
+                    self.position.zero,
+                    self.velocity.negative,
+                    self.angle.negative,
+                    self.angular_velocity.positive,
+                ): self.action.left,
+                (
+                    self.position.zero,
+                    self.velocity.negative,
+                    self.angle.zero,
+                    self.angular_velocity.negative,
+                ): self.action.left,
+                (
+                    self.position.zero,
+                    self.velocity.negative,
+                    self.angle.zero,
+                    self.angular_velocity.zero,
+                ): self.action.left,
+                (
+                    self.position.zero,
+                    self.velocity.negative,
+                    self.angle.zero,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                (
+                    self.position.zero,
+                    self.velocity.negative,
+                    self.angle.positive,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.zero,
+                    self.velocity.negative,
+                    self.angle.positive,
+                    self.angular_velocity.zero,
+                ): self.action.left,
+                (
+                    self.position.zero,
+                    self.velocity.negative,
+                    self.angle.positive,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                # Position: zero, Velocity: zero
+                (
+                    self.position.zero,
+                    self.velocity.zero,
+                    self.angle.negative,
+                    self.angular_velocity.negative,
+                ): self.action.left,
+                (
+                    self.position.zero,
+                    self.velocity.zero,
+                    self.angle.negative,
+                    self.angular_velocity.zero,
+                ): self.action.left,
+                (
+                    self.position.zero,
+                    self.velocity.zero,
+                    self.angle.negative,
+                    self.angular_velocity.positive,
+                ): self.action.nothing,
+                (
+                    self.position.zero,
+                    self.velocity.zero,
+                    self.angle.zero,
+                    self.angular_velocity.negative,
+                ): self.action.left,
+                (
+                    self.position.zero,
+                    self.velocity.zero,
+                    self.angle.zero,
+                    self.angular_velocity.zero,
+                ): self.action.nothing,
+                (
+                    self.position.zero,
+                    self.velocity.zero,
+                    self.angle.zero,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                (
+                    self.position.zero,
+                    self.velocity.zero,
+                    self.angle.positive,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.zero,
+                    self.velocity.zero,
+                    self.angle.positive,
+                    self.angular_velocity.zero,
+                ): self.action.right,
+                (
+                    self.position.zero,
+                    self.velocity.zero,
+                    self.angle.positive,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                # Position: zero, Velocity: positive
+                (
+                    self.position.zero,
+                    self.velocity.positive,
+                    self.angle.negative,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.zero,
+                    self.velocity.positive,
+                    self.angle.negative,
+                    self.angular_velocity.zero,
+                ): self.action.nothing,
+                (
+                    self.position.zero,
+                    self.velocity.positive,
+                    self.angle.negative,
+                    self.angular_velocity.positive,
+                ): self.action.nothing,
+                (
+                    self.position.zero,
+                    self.velocity.positive,
+                    self.angle.zero,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.zero,
+                    self.velocity.positive,
+                    self.angle.zero,
+                    self.angular_velocity.zero,
+                ): self.action.right,
+                (
+                    self.position.zero,
+                    self.velocity.positive,
+                    self.angle.zero,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                (
+                    self.position.zero,
+                    self.velocity.positive,
+                    self.angle.positive,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.zero,
+                    self.velocity.positive,
+                    self.angle.positive,
+                    self.angular_velocity.zero,
+                ): self.action.right,
+                (
+                    self.position.zero,
+                    self.velocity.positive,
+                    self.angle.positive,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                # ========== POSITION: POSITIVE ==========
+                # Position: positive, Velocity: negative
+                (
+                    self.position.positive,
+                    self.velocity.negative,
+                    self.angle.negative,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.positive,
+                    self.velocity.negative,
+                    self.angle.negative,
+                    self.angular_velocity.zero,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.negative,
+                    self.angle.negative,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.negative,
+                    self.angle.zero,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.positive,
+                    self.velocity.negative,
+                    self.angle.zero,
+                    self.angular_velocity.zero,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.negative,
+                    self.angle.zero,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.negative,
+                    self.angle.positive,
+                    self.angular_velocity.negative,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.negative,
+                    self.angle.positive,
+                    self.angular_velocity.zero,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.negative,
+                    self.angle.positive,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                # Position: positive, Velocity: zero
+                (
+                    self.position.positive,
+                    self.velocity.zero,
+                    self.angle.negative,
+                    self.angular_velocity.negative,
+                ): self.action.left,
+                (
+                    self.position.positive,
+                    self.velocity.zero,
+                    self.angle.negative,
+                    self.angular_velocity.zero,
+                ): self.action.nothing,
+                (
+                    self.position.positive,
+                    self.velocity.zero,
+                    self.angle.negative,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.zero,
+                    self.angle.zero,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.positive,
+                    self.velocity.zero,
+                    self.angle.zero,
+                    self.angular_velocity.zero,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.zero,
+                    self.angle.zero,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.zero,
+                    self.angle.positive,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.positive,
+                    self.velocity.zero,
+                    self.angle.positive,
+                    self.angular_velocity.zero,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.zero,
+                    self.angle.positive,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                # Position: positive, Velocity: positive
+                (
+                    self.position.positive,
+                    self.velocity.positive,
+                    self.angle.negative,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.positive,
+                    self.velocity.positive,
+                    self.angle.negative,
+                    self.angular_velocity.zero,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.positive,
+                    self.angle.negative,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.positive,
+                    self.angle.zero,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
                     self.position.positive,
                     self.velocity.positive,
                     self.angle.zero,
                     self.angular_velocity.zero,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.positive,
+                    self.angle.zero,
+                    self.angular_velocity.positive,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.positive,
+                    self.angle.positive,
+                    self.angular_velocity.negative,
+                ): self.action.nothing,
+                (
+                    self.position.positive,
+                    self.velocity.positive,
+                    self.angle.positive,
+                    self.angular_velocity.zero,
+                ): self.action.right,
+                (
+                    self.position.positive,
+                    self.velocity.positive,
+                    self.angle.positive,
+                    self.angular_velocity.positive,
                 ): self.action.strong_right,
-                (
-                    self.position.negative,
-                    self.velocity.negative,
-                    self.angle.zero,
-                    self.angular_velocity.positive,
-                ): self.action.nothing,
-                (
-                    self.position.positive,
-                    self.velocity.positive,
-                    self.angle.zero,
-                    self.angular_velocity.negative,
-                ): self.action.nothing,
-                (
-                    self.position.negative,
-                    self.velocity.negative,
-                    self.angle.positive,
-                    self.angular_velocity.positive,
-                ): self.action.nothing,
-                (
-                    self.position.positive,
-                    self.velocity.positive,
-                    self.angle.negative,
-                    self.angular_velocity.negative,
-                ): self.action.nothing,
-                (
-                    self.position.negative,
-                    self.velocity.negative,
-                    self.angle.positive,
-                    self.angular_velocity.negative,
-                ): self.action.nothing,
-                (
-                    self.position.positive,
-                    self.velocity.positive,
-                    self.angle.negative,
-                    self.angular_velocity.positive,
-                ): self.action.nothing,
-                (
-                    self.position.negative,
-                    self.velocity.negative,
-                    self.angle.positive,
-                    self.angular_velocity.zero,
-                ): self.action.nothing,
-                (
-                    self.position.positive,
-                    self.velocity.positive,
-                    self.angle.negative,
-                    self.angular_velocity.zero,
-                ): self.action.nothing,
-                (
-                    self.position.negative,
-                    self.velocity.negative,
-                    self.angle.zero,
-                    self.angular_velocity.negative,
-                ): self.action.nothing,
-                (
-                    self.position.positive,
-                    self.velocity.positive,
-                    self.angle.zero,
-                    self.angular_velocity.positive,
-                ): self.action.nothing,
-                (
-                    self.position.negative,
-                    self.velocity.negative,
-                    self.angle.zero,
-                    self.angular_velocity.strong_positive,
-                ): self.action.right,
-                (
-                    self.position.positive,
-                    self.velocity.positive,
-                    self.angle.zero,
-                    self.angular_velocity.strong_negative,
-                ): self.action.left,
-                (
-                    self.position.negative,
-                    self.velocity.negative,
-                    self.angle.positive,
-                    self.angular_velocity.strong_positive,
-                ): self.action.right,
-                (
-                    self.position.positive,
-                    self.velocity.positive,
-                    self.angle.negative,
-                    self.angular_velocity.strong_negative,
-                ): self.action.left,
-                (
-                    self.position.negative,
-                    self.velocity.negative,
-                    self.angle.positive,
-                    self.angular_velocity.positive,
-                ): self.action.nothing,
-                (
-                    self.position.positive,
-                    self.velocity.positive,
-                    self.angle.negative,
-                    self.angular_velocity.negative,
-                ): self.action.nothing,
-                # If pole is upright, we still need to decide based on angular velocity
-                # (self.angle.zero, self.angular_velocity.negative): self.action.nothing,
-                # (self.angle.zero, self.angular_velocity.positive): self.action.nothing,
-                # (
-                #     self.angle.zero,
-                #     self.angular_velocity.negative,
-                # ): self.action.left,
-                # (
-                #     self.angle.zero,
-                #     self.angular_velocity.positive,
-                # ): self.action.right,
-                # (
-                #     self.angle.negative,
-                #     self.angular_velocity.negative,
-                # ): self.action.strong_left,
-                # (
-                #     self.angle.positive,
-                #     self.angular_velocity.positive,
-                # ): self.action.strong_right,
-                # # # If pole is falling left (negative angle), push left to counteract
-                # # (self.angle.negative,): self.action.left,
-                # # # If pole is falling right (positive angle), push right to counteract
-                # # (self.angle.positive,): self.action.right,
-                # # If cart is too far left, push right
-                # (
-                #     self.position.negative,
-                #     self.angle.zero,
-                #     self.angular_velocity.zero,
-                # ): self.action.left,
-                # # If cart is too far right, push left
-                # (
-                #     self.position.positive,
-                #     self.angle.zero,
-                #     self.angular_velocity.zero,
-                # ): self.action.right,
-                # (
-                #     self.position.negative,
-                #     self.velocity.positive,
-                # ): self.action.right,
-                # (
-                #     self.position.positive,
-                #     self.velocity.negative,
-                # ): self.action.left,
             }
         )
 
