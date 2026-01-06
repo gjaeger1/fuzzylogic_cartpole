@@ -41,8 +41,8 @@ def run_episode(env, controller, render=False):
 
 def main():
     """Main function to run the demo."""
-    # Create environment
-    env = gym.make("CartPole-v1")
+    # Create environment with visualization enabled
+    env = gym.make("CartPole-v1", render_mode="human")
     
     # Create fuzzy controller
     controller = FuzzyCartPoleController()
@@ -55,7 +55,7 @@ def main():
     print("-" * 50)
     
     for episode in range(num_episodes):
-        reward = run_episode(env, controller)
+        reward = run_episode(env, controller, render=True)
         rewards.append(reward)
         print(f"Episode {episode + 1}: {reward} timesteps")
     
