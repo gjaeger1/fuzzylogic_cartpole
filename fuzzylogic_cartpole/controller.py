@@ -26,25 +26,25 @@ class FuzzyCartPoleController:
         # Cart position: typically -2.4 to 2.4
         self.position = Domain("position", -3.0, 3.0)
         self.position.negative = S(-3.0, -0.5)
-        self.position.zero = triangular(-1.0, 0.0, 1.0)
+        self.position.zero = triangular(-1.0, 1.0, c=0.0)
         self.position.positive = R(0.5, 3.0)
         
         # Cart velocity: typically -inf to inf, but practically -2 to 2
         self.velocity = Domain("velocity", -4.0, 4.0)
         self.velocity.negative = S(-4.0, -0.5)
-        self.velocity.zero = triangular(-1.0, 0.0, 1.0)
+        self.velocity.zero = triangular(-1.0, 1.0, c=0.0)
         self.velocity.positive = R(0.5, 4.0)
         
         # Pole angle: typically -0.418 to 0.418 radians (~24 degrees)
         self.angle = Domain("angle", -0.5, 0.5)
         self.angle.negative = S(-0.5, -0.05)
-        self.angle.zero = triangular(-0.1, 0.0, 0.1)
+        self.angle.zero = triangular(-0.1, 0.1, c=0.0)
         self.angle.positive = R(0.05, 0.5)
         
         # Pole angular velocity: typically -inf to inf, but practically -2 to 2
         self.angular_velocity = Domain("angular_velocity", -4.0, 4.0)
         self.angular_velocity.negative = S(-4.0, -0.5)
-        self.angular_velocity.zero = triangular(-1.0, 0.0, 1.0)
+        self.angular_velocity.zero = triangular(-1.0, 1.0, c=0.0)
         self.angular_velocity.positive = R(0.5, 4.0)
         
         # Define output domain
@@ -52,24 +52,24 @@ class FuzzyCartPoleController:
         # We'll use a continuous output and threshold at 0.5
         self.action = Domain("action", 0.0, 1.0)
         self.action.left = S(0.0, 0.3)
-        self.action.neutral = triangular(0.3, 0.5, 0.7)
+        self.action.neutral = triangular(0.3, 0.7, c=0.5)
         self.action.right = R(0.7, 1.0)
         
         # Define fuzzy rules
         # The main goal is to keep the pole upright (angle close to zero)
         # and the cart near the center (position close to zero)
         self.rules = [
-            # If pole is falling left (negative angle), push right
-            Rule({(self.angle.negative,): self.action.right}),
+            # If pole is falling left (negative angle), push left to counteract
+            Rule({(self.angle.negative,): self.action.left}),
             
-            # If pole is falling right (positive angle), push left
-            Rule({(self.angle.positive,): self.action.left}),
+            # If pole is falling right (positive angle), push right to counteract
+            Rule({(self.angle.positive,): self.action.right}),
             
-            # If pole is upright but moving left, push left to follow
-            Rule({(self.angle.zero, self.angular_velocity.negative): self.action.left}),
+            # If pole is upright but moving left, push right to stabilize
+            Rule({(self.angle.zero, self.angular_velocity.negative): self.action.right}),
             
-            # If pole is upright but moving right, push right to follow
-            Rule({(self.angle.zero, self.angular_velocity.positive): self.action.right}),
+            # If pole is upright but moving right, push left to stabilize
+            Rule({(self.angle.zero, self.angular_velocity.positive): self.action.left}),
             
             # If pole is upright and stable, balance based on cart position
             Rule({(self.angle.zero, self.angular_velocity.zero, self.position.negative): self.action.right}),
@@ -97,8 +97,8 @@ class FuzzyCartPoleController:
         total_weight = 0.0
         
         for rule in self.rules:
-            # Get the antecedent (input conditions)
-            for antecedent, consequent in rule.items():
+            # Get the conditions from the rule
+            for antecedent, consequent in rule.conditions.items():
                 # Calculate membership degree for this rule
                 membership = 1.0
                 
