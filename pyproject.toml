@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fuzzylogic_cartpole"
+version = "0.1.0"
+description = "A simple example on how to use fuzzy logic to control the CartPole gymnasium environment"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "fuzzylogic_cartpole"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "gymnasium>=0.29.0",
+    "fuzzylogic>=1.2.0",
+    "numpy>=1.24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/gjaeger1/fuzzylogic_cartpole"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["fuzzylogic_cartpole*"]
+exclude = ["tests*"]
