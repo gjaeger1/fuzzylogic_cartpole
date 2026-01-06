@@ -15,6 +15,11 @@ class FuzzyCartPoleController:
     the cart position, cart velocity, pole angle, and pole angular velocity.
     """
     
+    # Output values for defuzzification
+    LEFT_ACTION_VALUE = 0.15
+    RIGHT_ACTION_VALUE = 0.85
+    NEUTRAL_ACTION_VALUE = 0.5
+    
     def __init__(self):
         """Initialize the fuzzy logic controller with membership functions and rules."""
         self._setup_fuzzy_system()
@@ -93,7 +98,7 @@ class FuzzyCartPoleController:
         cart_position, cart_velocity, pole_angle, pole_angular_velocity = observation
         
         # Evaluate fuzzy rules
-        fuzzy_output = 0.5  # Default neutral
+        fuzzy_output = 0.0  # Initialize accumulator for weighted output
         total_weight = 0.0
         
         for rule in self.rules:
@@ -116,11 +121,11 @@ class FuzzyCartPoleController:
                 if membership > 0:
                     # Use center of gravity for the consequent set
                     if consequent == self.action.left:
-                        output_value = 0.15
+                        output_value = self.LEFT_ACTION_VALUE
                     elif consequent == self.action.right:
-                        output_value = 0.85
+                        output_value = self.RIGHT_ACTION_VALUE
                     else:
-                        output_value = 0.5
+                        output_value = self.NEUTRAL_ACTION_VALUE
                     
                     fuzzy_output += membership * output_value
                     total_weight += membership
@@ -128,6 +133,9 @@ class FuzzyCartPoleController:
         # Defuzzification: weighted average
         if total_weight > 0:
             fuzzy_output /= total_weight
+        else:
+            # Default to neutral if no rules fired
+            fuzzy_output = self.NEUTRAL_ACTION_VALUE
         
         # Convert to discrete action
         action = 1 if fuzzy_output > 0.5 else 0
