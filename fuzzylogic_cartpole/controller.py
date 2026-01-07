@@ -127,7 +127,7 @@ class FuzzyCartPoleController:
                     self.velocity.zero,
                     self.angle.negative,
                     self.angular_velocity.negative,
-                ): self.action.strong_left,
+                ): self.action.left,
                 (
                     self.position.negative,
                     self.velocity.zero,
@@ -440,7 +440,7 @@ class FuzzyCartPoleController:
                     self.velocity.negative,
                     self.angle.positive,
                     self.angular_velocity.negative,
-                ): self.action.right,
+                ): self.action.nothing,
                 (
                     self.position.positive,
                     self.velocity.negative,
@@ -471,13 +471,13 @@ class FuzzyCartPoleController:
                     self.velocity.zero,
                     self.angle.negative,
                     self.angular_velocity.positive,
-                ): self.action.right,
+                ): self.action.nothing,
                 (
                     self.position.positive,
                     self.velocity.zero,
                     self.angle.zero,
                     self.angular_velocity.negative,
-                ): self.action.nothing,
+                ): self.action.right,
                 (
                     self.position.positive,
                     self.velocity.zero,
@@ -514,7 +514,7 @@ class FuzzyCartPoleController:
                     self.velocity.positive,
                     self.angle.negative,
                     self.angular_velocity.negative,
-                ): self.action.nothing,
+                ): self.action.left,
                 (
                     self.position.positive,
                     self.velocity.positive,
@@ -526,13 +526,13 @@ class FuzzyCartPoleController:
                     self.velocity.positive,
                     self.angle.negative,
                     self.angular_velocity.positive,
-                ): self.action.right,
+                ): self.action.nothing,
                 (
                     self.position.positive,
                     self.velocity.positive,
                     self.angle.zero,
                     self.angular_velocity.negative,
-                ): self.action.nothing,
+                ): self.action.left,
                 (
                     self.position.positive,
                     self.velocity.positive,
