@@ -25,9 +25,9 @@ class FuzzyCartPoleController:
         # Define input domains
         # Cart position: typically -2.4 to 2.4
         self.position = Domain("position", -4.8, 4.8, res=0.01)
-        self.position.negative = trapezoid(-5.0, -4.0, -1.0, 0)  # S(-
+        self.position.negative = S(-1.0, 0)  # S(-
         self.position.zero = triangular(-0.5, 0.5, c=0.0)
-        self.position.positive = trapezoid(0, 1.0, 4.0, 5.0)  # R(0, 4.0)
+        self.position.positive = R(0, 1.0)  # R(0, 4.0)
 
         # Cart velocity: typically -inf to inf, but practically -2 to 2
         self.velocity = Domain("velocity", -4.0, 4.0, res=0.01)
