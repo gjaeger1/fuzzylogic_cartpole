@@ -65,14 +65,11 @@ def generate_fuzzy_sets(domains, specifications):
     return domains
 
 
-def generate_rule_base(
-    input_domains, output_domains, specifications, default_outputs=None
-):
+def generate_rule_base(domains, specifications, default_outputs=None):
     """Generate fuzzy rules
 
     Args:
-        input_domains: List of Domain objects for inputs
-        output_domains: List of Domain objects for outputs
+        domains: List of Domain objects (both inputs and outputs)
         specifications: List of rule specifications with "inputs" as strings in format
                        ["domain_name.fuzzyset_name", ...] or a tuple/list of such strings
         default_outputs: Dict mapping output domain names to default fuzzy set names
@@ -82,16 +79,23 @@ def generate_rule_base(
 
     import itertools
 
-    # Convert to lists if not already
-    if not isinstance(input_domains, (list, tuple)):
-        input_domains = [input_domains]
-    if not isinstance(output_domains, (list, tuple)):
-        output_domains = [output_domains]
+    # Convert to list if not already
+    if not isinstance(domains, (list, tuple)):
+        domains = [domains]
 
     # Create a dictionary to easily access domains by name
-    domain_dict = {
-        domain._name: domain for domain in list(input_domains) + list(output_domains)
-    }
+    domain_dict = {domain._name: domain for domain in domains}
+
+    # Parse specifications to identify output domains
+    output_domain_names = set()
+    for spec in specifications:
+        output_domain_name = spec.get("output_domain")
+        if output_domain_name:
+            output_domain_names.add(output_domain_name)
+
+    # Separate input and output domains
+    output_domains = [d for d in domains if d._name in output_domain_names]
+    input_domains = [d for d in domains if d._name not in output_domain_names]
 
     # Get all fuzzy sets for each input domain
     # Access the _sets dictionary directly from each Domain object
@@ -888,13 +892,10 @@ def get_standard_rules(position, velocity, angle, angular_velocity, action):
     ]
 
     # Use generate_rule_base with action.nothing as default
-    input_domains = [position, velocity, angle, angular_velocity]
-    output_domains = [action]
+    domains = [position, velocity, angle, angular_velocity, action]
     default_outputs = {"action": "nothing"}
 
-    rules = generate_rule_base(
-        input_domains, output_domains, specifications, default_outputs
-    )
+    rules = generate_rule_base(domains, specifications, default_outputs)
 
     return rules
 
@@ -1626,3 +1627,18 @@ def get_standard_specifications():
     ]
 
     return domain_specs, fuzzy_set_specs, rule_specs
+
+
+def generate_controller_from_file(filename):
+    domain_specs, fuzzy_set_specs, rule_specs = load_specification(filename)
+
+    # Generate domains, fuzzy sets, and rules
+    domains = generate_fuzzy_sets(generate_domains(domain_specs), fuzzy_set_specs)
+    rules = generate_rule_base(
+        domains,
+        rule_specs,
+        {"action": "nothing"},
+    )
+
+    # Create fuzzy controller with loaded configuration
+    controller = FuzzyCartPoleController(domains, rules)

@@ -80,8 +80,7 @@ def main(config):
     domains = generate_fuzzy_sets(generate_domains(domain_specs), fuzzy_set_specs)
     position, velocity, angle, angular_velocity, action = domains
     rules = generate_rule_base(
-        (position, velocity, angle, angular_velocity),
-        action,
+        domains,
         rule_specs,
         {"action": "nothing"},
     )
