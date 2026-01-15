@@ -63,6 +63,81 @@ def generate_fuzzy_sets(domains, specifications):
     return domains
 
 
+def generate_rule_base(
+    input_domains, output_domains, specifications, default_outputs=None
+):
+    """Generate fuzzy rules"""
+    # For each combination of possible fuzzy sets on the input_domains there need to be a rule specified in the specifications. Otherwise, if given, default outputs need to be assigned.
+    # if multiple output domains are present, separate rule bases are generated. One for each output domain
+
+    import itertools
+
+    # Convert to lists if not already
+    if not isinstance(input_domains, (list, tuple)):
+        input_domains = [input_domains]
+    if not isinstance(output_domains, (list, tuple)):
+        output_domains = [output_domains]
+
+    # Get all fuzzy sets for each input domain
+    input_fuzzy_sets = []
+    for domain in input_domains:
+        # Get all fuzzy sets defined on this domain (attributes that are Set objects)
+        sets = [
+            getattr(domain, attr)
+            for attr in dir(domain)
+            if not attr.startswith("_") and isinstance(getattr(domain, attr), Set)
+        ]
+        input_fuzzy_sets.append(sets)
+
+    # Generate all combinations of input fuzzy sets
+    all_combinations = list(itertools.product(*input_fuzzy_sets))
+
+    # Create rule bases for each output domain
+    rule_bases = {}
+
+    for output_domain in output_domains:
+        output_name = output_domain._name
+        rules_dict = {}
+
+        # Process each combination
+        for combo in all_combinations:
+            # Check if this combination is in specifications
+            rule_found = False
+
+            for spec in specifications:
+                # Check if this spec matches the current combination and output domain
+                if spec.get("output_domain") == output_name:
+                    # Match input combination
+                    spec_inputs = spec.get("inputs")
+                    if spec_inputs == combo or (
+                        isinstance(spec_inputs, (list, tuple))
+                        and tuple(spec_inputs) == combo
+                    ):
+                        # Found a matching rule
+                        output_set_name = spec.get("output")
+                        output_set = getattr(output_domain, output_set_name)
+                        rules_dict[combo] = output_set
+                        rule_found = True
+                        break
+
+            # If no rule found, use default if provided
+            if not rule_found and default_outputs is not None:
+                if output_name in default_outputs:
+                    default_set_name = default_outputs[output_name]
+                    default_set = getattr(output_domain, default_set_name)
+                    rules_dict[combo] = default_set
+
+        # Create Rule object for this output domain
+        if rules_dict:
+            rule_bases[output_name] = Rule(rules_dict)
+
+    # Return single rule base if only one output domain, otherwise return dictionary
+    if len(output_domains) == 1:
+        return rule_bases[output_domains[0]._name]
+    else:
+        return rule_bases
+
+
 #####################################
 #
 # Defaults
@@ -229,510 +304,566 @@ def get_standard_fuzzy_sets(position, velocity, angle, angular_velocity, action)
 
 
 def get_standard_rules(position, velocity, angle, angular_velocity, action):
-    rules = Rule(
+    # Define specifications for rules that differ from the default (action.nothing)
+    specifications = [
+        # Position: negative, Velocity: negative
         {
-            # Complete rule base covering all 81 combinations (3^4)
-            # Format: (position, velocity, angle, angular_velocity): action
-            # Priority: Angle control > Angular velocity > Position > Velocity
-            # ========== POSITION: NEGATIVE ==========
-            # Position: negative, Velocity: negative
-            (
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.negative,
                 angle.negative,
                 angular_velocity.negative,
-            ): action.strong_left,
-            (
+            ),
+            "output": "strong_left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.negative,
                 angle.negative,
                 angular_velocity.zero,
-            ): action.left,
-            (
-                position.negative,
-                velocity.negative,
-                angle.negative,
-                angular_velocity.positive,
-            ): action.nothing,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.negative,
                 angle.zero,
                 angular_velocity.negative,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.negative,
                 angle.zero,
                 angular_velocity.zero,
-            ): action.left,
-            (
-                position.negative,
-                velocity.negative,
-                angle.zero,
-                angular_velocity.positive,
-            ): action.nothing,
-            (
-                position.negative,
-                velocity.negative,
-                angle.positive,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.negative,
                 angle.positive,
                 angular_velocity.zero,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.negative,
                 angle.positive,
                 angular_velocity.positive,
-            ): action.right,
-            # Position: negative, Velocity: zero
-            (
+            ),
+            "output": "right",
+        },
+        # Position: negative, Velocity: zero
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.zero,
                 angle.negative,
                 angular_velocity.negative,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.zero,
                 angle.negative,
                 angular_velocity.zero,
-            ): action.left,
-            (
-                position.negative,
-                velocity.zero,
-                angle.negative,
-                angular_velocity.positive,
-            ): action.nothing,
-            (
-                position.negative,
-                velocity.zero,
-                angle.zero,
-                angular_velocity.negative,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.zero,
                 angle.zero,
+                angular_velocity.negative,
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
+                position.negative,
+                velocity.zero,
+                angle.zero,
                 angular_velocity.zero,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.zero,
                 angle.zero,
                 angular_velocity.positive,
-            ): action.left,
-            (
-                position.negative,
-                velocity.zero,
-                angle.positive,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
-                position.negative,
-                velocity.zero,
-                angle.positive,
-                angular_velocity.zero,
-            ): action.nothing,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.zero,
                 angle.positive,
                 angular_velocity.positive,
-            ): action.right,
-            # Position: negative, Velocity: positive
-            (
+            ),
+            "output": "right",
+        },
+        # Position: negative, Velocity: positive
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.positive,
                 angle.negative,
                 angular_velocity.negative,
-            ): action.strong_left,
-            (
+            ),
+            "output": "strong_left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.positive,
                 angle.negative,
                 angular_velocity.zero,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.positive,
                 angle.negative,
                 angular_velocity.positive,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.positive,
                 angle.zero,
                 angular_velocity.negative,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.negative,
                 velocity.positive,
                 angle.zero,
                 angular_velocity.zero,
-            ): action.left,
-            (
-                position.negative,
-                velocity.positive,
-                angle.zero,
-                angular_velocity.positive,
-            ): action.nothing,
-            (
-                position.negative,
-                velocity.positive,
-                angle.positive,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
-                position.negative,
-                velocity.positive,
-                angle.positive,
-                angular_velocity.zero,
-            ): action.nothing,
-            (
-                position.negative,
-                velocity.positive,
-                angle.positive,
-                angular_velocity.positive,
-            ): action.nothing,
-            # ========== POSITION: ZERO ==========
-            # Position: zero, Velocity: negative
-            (
+            ),
+            "output": "left",
+        },
+        # Position: zero, Velocity: negative
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.negative,
                 angle.negative,
                 angular_velocity.negative,
-            ): action.strong_left,
-            (
+            ),
+            "output": "strong_left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.negative,
                 angle.negative,
                 angular_velocity.zero,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.negative,
                 angle.negative,
                 angular_velocity.positive,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.negative,
                 angle.zero,
                 angular_velocity.negative,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.negative,
                 angle.zero,
                 angular_velocity.zero,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.negative,
                 angle.zero,
                 angular_velocity.positive,
-            ): action.right,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.negative,
                 angle.positive,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
+                angular_velocity.zero,
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.negative,
                 angle.positive,
-                angular_velocity.zero,
-            ): action.left,
-            (
-                position.zero,
-                velocity.negative,
-                angle.positive,
                 angular_velocity.positive,
-            ): action.right,
-            # Position: zero, Velocity: zero
-            (
+            ),
+            "output": "right",
+        },
+        # Position: zero, Velocity: zero
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.zero,
                 angle.negative,
                 angular_velocity.negative,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.zero,
                 angle.negative,
                 angular_velocity.zero,
-            ): action.left,
-            (
-                position.zero,
-                velocity.zero,
-                angle.negative,
-                angular_velocity.positive,
-            ): action.nothing,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.zero,
                 angle.zero,
                 angular_velocity.negative,
-            ): action.left,
-            (
-                position.zero,
-                velocity.zero,
-                angle.zero,
-                angular_velocity.zero,
-            ): action.nothing,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.zero,
                 angle.zero,
                 angular_velocity.positive,
-            ): action.right,
-            (
-                position.zero,
-                velocity.zero,
-                angle.positive,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.zero,
                 angle.positive,
                 angular_velocity.zero,
-            ): action.right,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.zero,
                 angle.positive,
                 angular_velocity.positive,
-            ): action.right,
-            # Position: zero, Velocity: positive
-            (
-                position.zero,
-                velocity.positive,
-                angle.negative,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
-                position.zero,
-                velocity.positive,
-                angle.negative,
-                angular_velocity.zero,
-            ): action.nothing,
-            (
-                position.zero,
-                velocity.positive,
-                angle.negative,
-                angular_velocity.positive,
-            ): action.nothing,
-            (
-                position.zero,
-                velocity.positive,
-                angle.zero,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
+            ),
+            "output": "right",
+        },
+        # Position: zero, Velocity: positive
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.positive,
                 angle.zero,
                 angular_velocity.zero,
-            ): action.right,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.positive,
                 angle.zero,
                 angular_velocity.positive,
-            ): action.right,
-            (
-                position.zero,
-                velocity.positive,
-                angle.positive,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.positive,
                 angle.positive,
                 angular_velocity.zero,
-            ): action.right,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.zero,
                 velocity.positive,
                 angle.positive,
                 angular_velocity.positive,
-            ): action.right,
-            # ========== POSITION: POSITIVE ==========
-            # Position: positive, Velocity: negative
-            (
-                position.positive,
-                velocity.negative,
-                angle.negative,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
+            ),
+            "output": "right",
+        },
+        # Position: positive, Velocity: negative
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.negative,
                 angle.negative,
                 angular_velocity.zero,
-            ): action.right,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.negative,
                 angle.negative,
                 angular_velocity.positive,
-            ): action.right,
-            (
-                position.positive,
-                velocity.negative,
-                angle.zero,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.negative,
                 angle.zero,
                 angular_velocity.zero,
-            ): action.right,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.negative,
                 angle.zero,
                 angular_velocity.positive,
-            ): action.right,
-            (
-                position.positive,
-                velocity.negative,
-                angle.positive,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.negative,
                 angle.positive,
                 angular_velocity.zero,
-            ): action.right,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.negative,
                 angle.positive,
                 angular_velocity.positive,
-            ): action.right,
-            # Position: positive, Velocity: zero
-            (
+            ),
+            "output": "right",
+        },
+        # Position: positive, Velocity: zero
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.zero,
                 angle.negative,
                 angular_velocity.negative,
-            ): action.left,
-            (
-                position.positive,
-                velocity.zero,
-                angle.negative,
-                angular_velocity.zero,
-            ): action.nothing,
-            (
-                position.positive,
-                velocity.zero,
-                angle.negative,
-                angular_velocity.positive,
-            ): action.nothing,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.zero,
                 angle.zero,
                 angular_velocity.negative,
-            ): action.right,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.zero,
                 angle.zero,
                 angular_velocity.zero,
-            ): action.right,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.zero,
                 angle.zero,
                 angular_velocity.positive,
-            ): action.right,
-            (
-                position.positive,
-                velocity.zero,
-                angle.positive,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.zero,
                 angle.positive,
                 angular_velocity.zero,
-            ): action.right,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.zero,
                 angle.positive,
                 angular_velocity.positive,
-            ): action.right,
-            # Position: positive, Velocity: positive
-            (
+            ),
+            "output": "right",
+        },
+        # Position: positive, Velocity: positive
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.positive,
                 angle.negative,
                 angular_velocity.negative,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.positive,
                 angle.negative,
                 angular_velocity.zero,
-            ): action.right,
-            (
-                position.positive,
-                velocity.positive,
-                angle.negative,
-                angular_velocity.positive,
-            ): action.nothing,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.positive,
                 angle.zero,
                 angular_velocity.negative,
-            ): action.left,
-            (
+            ),
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.positive,
                 angle.zero,
                 angular_velocity.zero,
-            ): action.right,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.positive,
                 angle.zero,
                 angular_velocity.positive,
-            ): action.right,
-            (
-                position.positive,
-                velocity.positive,
-                angle.positive,
-                angular_velocity.negative,
-            ): action.nothing,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.positive,
                 angle.positive,
                 angular_velocity.zero,
-            ): action.right,
-            (
+            ),
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": (
                 position.positive,
                 velocity.positive,
                 angle.positive,
                 angular_velocity.positive,
-            ): action.strong_right,
-        }
+            ),
+            "output": "strong_right",
+        },
+    ]
+
+    # Use generate_rule_base with action.nothing as default
+    input_domains = [position, velocity, angle, angular_velocity]
+    output_domains = [action]
+    default_outputs = {"action": "nothing"}
+
+    rules = generate_rule_base(
+        input_domains, output_domains, specifications, default_outputs
     )
 
     return rules
