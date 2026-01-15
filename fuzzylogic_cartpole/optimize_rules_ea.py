@@ -347,6 +347,7 @@ def optimize_fuzzy_rules(
     num_episodes=3,
     max_steps=500,
     mutation_rate=0.15,
+    use_initial_seed=False,
     initial_rule_specs=None,
     default_output_name=None,
     output_file="optimized_rules.csv",
@@ -365,8 +366,9 @@ def optimize_fuzzy_rules(
         num_episodes: Episodes per fitness evaluation
         max_steps: Max steps per episode
         mutation_rate: Probability of mutation per gene
-        initial_rule_specs: Optional list of rule specifications to seed first individual
-        default_output_name: Default output fuzzy set name for unseeded rules (required if initial_rule_specs provided)
+        use_initial_seed: If True, use initial_rule_specs to seed first individual; if False, use random initialization
+        initial_rule_specs: Optional list of rule specifications to seed first individual (used if use_initial_seed=True)
+        default_output_name: Default output fuzzy set name for unseeded rules (required if use_initial_seed=True)
         output_file: File to save best genomes (CSV)
         yaml_file: File to save best rule base (YAML)
         use_parallel: Whether to use parallel evaluation with dask
@@ -403,10 +405,14 @@ def optimize_fuzzy_rules(
     )
 
     # Initialize with provided rule specs if requested
-    if initial_rule_specs is not None:
+    if use_initial_seed:
+        if initial_rule_specs is None:
+            raise ValueError(
+                "initial_rule_specs must be provided when use_initial_seed=True"
+            )
         if default_output_name is None:
             raise ValueError(
-                "default_output_name must be provided when initial_rule_specs is given"
+                "default_output_name must be provided when use_initial_seed=True"
             )
         print(
             "Creating initial population with provided rule specifications as seed..."
@@ -420,6 +426,7 @@ def optimize_fuzzy_rules(
             num_rules,
         )
     else:
+        print("Creating initial population with random genomes...")
         initial_genome = None
 
     # Setup the evolutionary algorithm
@@ -577,6 +584,7 @@ if __name__ == "__main__":
         num_episodes=3,
         max_steps=500,
         mutation_rate=0.15,
+        use_initial_seed=False,  # Set to False for random initialization
         initial_rule_specs=initial_rule_specs,
         default_output_name="nothing",
         output_file="optimized_rules.csv",
