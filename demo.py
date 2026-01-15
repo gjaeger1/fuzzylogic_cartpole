@@ -4,12 +4,22 @@ Demo script to run the Fuzzy Logic CartPole controller.
 This script creates a CartPole-v1 environment and runs it using the fuzzy logic controller.
 """
 
+import os
+
+import click
 import gymnasium as gym
 
 from fuzzylogic_cartpole import (
     FuzzyCartPoleController,
-    get_standard_domains,
+)
+from fuzzylogic_cartpole.rule_base_generation import (
+    generate_domains,
+    generate_fuzzy_sets,
+    generate_rule_base,
     get_standard_rules,
+    get_standard_specifications,
+    load_specification,
+    save_specification,
 )
 
 
@@ -25,7 +35,7 @@ def run_episode(env, controller, render=False):
     Returns:
         int: Total reward (number of timesteps the pole stayed upright)
     """
-    observation, info = env.reset()
+    observation, _ = env.reset()
     total_reward = 0
     done = False
 
@@ -37,20 +47,50 @@ def run_episode(env, controller, render=False):
         action = controller.get_action(observation)
 
         # Take action in environment
-        observation, reward, terminated, truncated, info = env.step(action)
+        observation, reward, terminated, truncated, _ = env.step(action)
         total_reward += reward
         done = terminated or truncated
 
     return total_reward
 
 
-def main():
+@click.command()
+@click.option(
+    "--config",
+    type=click.Path(),
+    default="fuzzy_config.yaml",
+    help="Path to the YAML configuration file for the fuzzy controller.",
+)
+def main(config):
     """Main function to run the demo."""
+    # Check if config file exists, if not create it with standard configuration
+    if not os.path.exists(config):
+        print(
+            f"Configuration file '{config}' not found. Creating with standard configuration..."
+        )
+        domain_specs, fuzzy_set_specs, rule_specs = get_standard_specifications()
+        save_specification(domain_specs, fuzzy_set_specs, rule_specs, config)
+        print(f"Created configuration file: {config}")
+
+    # Load configuration
+    print(f"Loading configuration from: {config}")
+    domain_specs, fuzzy_set_specs, rule_specs = load_specification(config)
+
+    # Generate domains, fuzzy sets, and rules
+    domains = generate_fuzzy_sets(generate_domains(domain_specs), fuzzy_set_specs)
+    position, velocity, angle, angular_velocity, action = domains
+    rules = generate_rule_base(
+        (position, velocity, angle, angular_velocity),
+        action,
+        rule_specs,
+        {"action": "nothing"},
+    )
+
     # Create environment with visualization enabled
     env = gym.make("CartPole-v1", render_mode="human")
 
-    # Create fuzzy controller
-    controller = FuzzyCartPoleController()
+    # Create fuzzy controller with loaded configuration
+    controller = FuzzyCartPoleController(domains, rules)
 
     # Run multiple episodes
     num_episodes = 1
