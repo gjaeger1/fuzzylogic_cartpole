@@ -3,6 +3,7 @@ Fuzzy Logic Controller for CartPole Environment
 """
 
 import numpy as np
+import yaml
 from fuzzylogic.classes import Domain, Rule, Set
 from fuzzylogic.functions import R, S, trapezoid, triangular
 
@@ -89,7 +90,7 @@ def generate_rule_base(
 
     # Create a dictionary to easily access domains by name
     domain_dict = {
-        domain._name: domain for domain in input_domains + list(output_domains)
+        domain._name: domain for domain in list(input_domains) + list(output_domains)
     }
 
     # Get all fuzzy sets for each input domain
@@ -896,3 +897,732 @@ def get_standard_rules(position, velocity, angle, angular_velocity, action):
     )
 
     return rules
+
+
+def save_specification(domain_specs, fuzzy_set_specs, rule_specs, filename):
+    """Write specifications to YAML file
+
+    Args:
+        domain_specs: List of domain specifications (for generate_domains)
+        fuzzy_set_specs: List of fuzzy set specifications (for generate_fuzzy_sets)
+        rule_specs: List of rule specifications (for generate_rule_base)
+        filename: Path to the YAML file to write
+    """
+    specification_data = {
+        "domains": domain_specs,
+        "fuzzy_sets": fuzzy_set_specs,
+        "rules": rule_specs,
+    }
+
+    with open(filename, "w") as f:
+        yaml.dump(specification_data, f, default_flow_style=False, sort_keys=False)
+
+
+def load_specification(filename):
+    """Load specifications from YAML file
+
+    Args:
+        filename: Path to the YAML file to read
+
+    Returns:
+        tuple: (domain_specs, fuzzy_set_specs, rule_specs)
+    """
+    with open(filename, "r") as f:
+        specification_data = yaml.safe_load(f)
+
+    domain_specs = specification_data.get("domains", [])
+    fuzzy_set_specs = specification_data.get("fuzzy_sets", [])
+    rule_specs = specification_data.get("rules", [])
+
+    return domain_specs, fuzzy_set_specs, rule_specs
+
+
+def get_standard_specifications():
+    """Get all standard specifications for the CartPole controller
+
+    Returns:
+        tuple: (domain_specs, fuzzy_set_specs, rule_specs) that can be passed to
+               generate_domains, generate_fuzzy_sets, and generate_rule_base
+    """
+    # Domain specifications
+    domain_specs = [
+        {"name": "position", "min": -4.8, "max": 4.8, "res": 0.01},
+        {"name": "velocity", "min": -4.0, "max": 4.0, "res": 0.01},
+        {"name": "angle", "min": -0.5, "max": 0.5, "res": 0.01},
+        {"name": "angular_velocity", "min": -4.0, "max": 4.0, "res": 0.01},
+        {"name": "action", "min": 0.0, "max": 1.0, "res": 0.01},
+    ]
+
+    # Fuzzy set specifications
+    fuzzy_set_specs = [
+        # Fuzzy sets for position
+        {
+            "domain": "position",
+            "name": "negative",
+            "function": "S",
+            "param1": -1.0,
+            "param2": 0,
+        },
+        {
+            "domain": "position",
+            "name": "zero",
+            "function": "triangular",
+            "param1": -0.5,
+            "param2": 0.5,
+        },
+        {
+            "domain": "position",
+            "name": "positive",
+            "function": "R",
+            "param1": 0,
+            "param2": 1.0,
+        },
+        # Fuzzy sets for velocity
+        {
+            "domain": "velocity",
+            "name": "negative",
+            "function": "S",
+            "param1": -4.0,
+            "param2": -0.5,
+        },
+        {
+            "domain": "velocity",
+            "name": "zero",
+            "function": "triangular",
+            "param1": -1.0,
+            "param2": 1.0,
+        },
+        {
+            "domain": "velocity",
+            "name": "positive",
+            "function": "R",
+            "param1": 0.5,
+            "param2": 4.0,
+        },
+        # Fuzzy sets for angle
+        {
+            "domain": "angle",
+            "name": "negative",
+            "function": "S",
+            "param1": -0.5,
+            "param2": -0.05,
+        },
+        {
+            "domain": "angle",
+            "name": "zero",
+            "function": "triangular",
+            "param1": -0.1,
+            "param2": 0.1,
+        },
+        {
+            "domain": "angle",
+            "name": "positive",
+            "function": "R",
+            "param1": 0.05,
+            "param2": 0.5,
+        },
+        # Fuzzy sets for angular_velocity
+        {
+            "domain": "angular_velocity",
+            "name": "negative",
+            "function": "S",
+            "param1": -4.0,
+            "param2": -0.5,
+        },
+        {
+            "domain": "angular_velocity",
+            "name": "zero",
+            "function": "triangular",
+            "param1": -0.5,
+            "param2": 0.5,
+        },
+        {
+            "domain": "angular_velocity",
+            "name": "positive",
+            "function": "R",
+            "param1": 0.5,
+            "param2": 4.0,
+        },
+        # Fuzzy sets for action
+        {
+            "domain": "action",
+            "name": "strong_left",
+            "function": "S",
+            "param1": 0.0,
+            "param2": 0.25,
+        },
+        {
+            "domain": "action",
+            "name": "left",
+            "function": "triangular",
+            "param1": 0.1,
+            "param2": 0.5,
+        },
+        {
+            "domain": "action",
+            "name": "nothing",
+            "function": "triangular",
+            "param1": 0.425,
+            "param2": 0.575,
+        },
+        {
+            "domain": "action",
+            "name": "right",
+            "function": "triangular",
+            "param1": 0.5,
+            "param2": 0.9,
+        },
+        {
+            "domain": "action",
+            "name": "strong_right",
+            "function": "R",
+            "param1": 0.75,
+            "param2": 1.0,
+        },
+    ]
+
+    # Rule specifications (using string-based format)
+    rule_specs = [
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.negative",
+                "angle.negative",
+                "angular_velocity.negative",
+            ],
+            "output": "strong_left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.negative",
+                "angle.negative",
+                "angular_velocity.zero",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.negative",
+                "angle.zero",
+                "angular_velocity.negative",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.negative",
+                "angle.zero",
+                "angular_velocity.zero",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.negative",
+                "angle.positive",
+                "angular_velocity.zero",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.negative",
+                "angle.positive",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.zero",
+                "angle.negative",
+                "angular_velocity.negative",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.zero",
+                "angle.negative",
+                "angular_velocity.zero",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.zero",
+                "angle.zero",
+                "angular_velocity.negative",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.zero",
+                "angle.zero",
+                "angular_velocity.zero",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.zero",
+                "angle.zero",
+                "angular_velocity.positive",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.zero",
+                "angle.positive",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.positive",
+                "angle.negative",
+                "angular_velocity.negative",
+            ],
+            "output": "strong_left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.positive",
+                "angle.negative",
+                "angular_velocity.zero",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.positive",
+                "angle.negative",
+                "angular_velocity.positive",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.positive",
+                "angle.zero",
+                "angular_velocity.negative",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.negative",
+                "velocity.positive",
+                "angle.zero",
+                "angular_velocity.zero",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.negative",
+                "angle.negative",
+                "angular_velocity.negative",
+            ],
+            "output": "strong_left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.negative",
+                "angle.negative",
+                "angular_velocity.zero",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.negative",
+                "angle.negative",
+                "angular_velocity.positive",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.negative",
+                "angle.zero",
+                "angular_velocity.negative",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.negative",
+                "angle.zero",
+                "angular_velocity.zero",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.negative",
+                "angle.zero",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.negative",
+                "angle.positive",
+                "angular_velocity.zero",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.negative",
+                "angle.positive",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.zero",
+                "angle.negative",
+                "angular_velocity.negative",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.zero",
+                "angle.negative",
+                "angular_velocity.zero",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.zero",
+                "angle.zero",
+                "angular_velocity.negative",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.zero",
+                "angle.zero",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.zero",
+                "angle.positive",
+                "angular_velocity.zero",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.zero",
+                "angle.positive",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.positive",
+                "angle.zero",
+                "angular_velocity.zero",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.positive",
+                "angle.zero",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.positive",
+                "angle.positive",
+                "angular_velocity.zero",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.zero",
+                "velocity.positive",
+                "angle.positive",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.negative",
+                "angle.negative",
+                "angular_velocity.zero",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.negative",
+                "angle.negative",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.negative",
+                "angle.zero",
+                "angular_velocity.zero",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.negative",
+                "angle.zero",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.negative",
+                "angle.positive",
+                "angular_velocity.zero",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.negative",
+                "angle.positive",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.zero",
+                "angle.negative",
+                "angular_velocity.negative",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.zero",
+                "angle.zero",
+                "angular_velocity.negative",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.zero",
+                "angle.zero",
+                "angular_velocity.zero",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.zero",
+                "angle.zero",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.zero",
+                "angle.positive",
+                "angular_velocity.zero",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.zero",
+                "angle.positive",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.positive",
+                "angle.negative",
+                "angular_velocity.negative",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.positive",
+                "angle.negative",
+                "angular_velocity.zero",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.positive",
+                "angle.zero",
+                "angular_velocity.negative",
+            ],
+            "output": "left",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.positive",
+                "angle.zero",
+                "angular_velocity.zero",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.positive",
+                "angle.zero",
+                "angular_velocity.positive",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.positive",
+                "angle.positive",
+                "angular_velocity.zero",
+            ],
+            "output": "right",
+        },
+        {
+            "output_domain": "action",
+            "inputs": [
+                "position.positive",
+                "velocity.positive",
+                "angle.positive",
+                "angular_velocity.positive",
+            ],
+            "output": "strong_right",
+        },
+    ]
+
+    return domain_specs, fuzzy_set_specs, rule_specs
