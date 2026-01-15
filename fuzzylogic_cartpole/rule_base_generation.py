@@ -7,6 +7,69 @@ from fuzzylogic.classes import Domain, Rule, Set
 from fuzzylogic.functions import R, S, trapezoid, triangular
 
 
+def generate_domains(specification):
+    """Generate Domain object from specification."""
+    # specification is a list of individual domain specifications.
+    # Each domain specification defines the name, min-value, max-value and resulition
+    # The function should return a tuple, that is, the same datastructure as returned by 'get_standard_domains'
+
+    domains = []
+    for spec in specification:
+        name = spec["name"]
+        min_value = spec["min"]
+        max_value = spec["max"]
+        resolution = spec.get("res", 0.01)  # Default resolution if not specified
+
+        domain = Domain(name, min_value, max_value, res=resolution)
+        domains.append(domain)
+
+    return tuple(domains)
+
+
+def generate_fuzzy_sets(domains, specifications):
+    """Generate fuzzy sets on domains"""
+    # Domains is a tuple of domains
+    # specificaiton is a list of individual fuzzy specifications
+    # each fuzzy specification defines the name of the fuzzy set, a function representing the membership (S, R, triangular) and two parameters of the function
+    # This function then generates the fuzzy set on the domain and returns the extended domains as a tuple
+
+    # Create a dictionary to easily access domains by name
+    domain_dict = {domain._name: domain for domain in domains}
+
+    # Process each fuzzy set specification
+    for spec in specifications:
+        domain_name = spec["domain"]
+        set_name = spec["name"]
+        func_type = spec["function"]
+        param1 = spec["param1"]
+        param2 = spec["param2"]
+
+        # Get the corresponding domain
+        domain = domain_dict[domain_name]
+
+        # Create the fuzzy set based on the function type
+        if func_type == "S":
+            fuzzy_set = S(param1, param2)
+        elif func_type == "R":
+            fuzzy_set = R(param1, param2)
+        elif func_type == "triangular":
+            fuzzy_set = triangular(param1, param2)
+        else:
+            raise ValueError(f"Unknown function type: {func_type}")
+
+        # Assign the fuzzy set to the domain
+        setattr(domain, set_name, fuzzy_set)
+
+    return domains
+
+
+#####################################
+#
+# Defaults
+#
+#####################################
+
+
 def get_standard_domains():
     # Define input domains
     # Cart position: typically -2.4 to 2.4
@@ -30,32 +93,137 @@ def get_standard_domains():
 
 
 def get_standard_fuzzy_sets(position, velocity, angle, angular_velocity, action):
-    # Define fuzzy sets for position
-    position.negative = S(-1.0, 0)  # S(-
-    position.zero = triangular(-0.5, 0.5, c=0.0)
-    position.positive = R(0, 1.0)  # R(0, 4.0)
+    # Define specifications for all fuzzy sets
+    specifications = [
+        # Fuzzy sets for position
+        {
+            "domain": "position",
+            "name": "negative",
+            "function": "S",
+            "param1": -1.0,
+            "param2": 0,
+        },
+        {
+            "domain": "position",
+            "name": "zero",
+            "function": "triangular",
+            "param1": -0.5,
+            "param2": 0.5,
+        },
+        {
+            "domain": "position",
+            "name": "positive",
+            "function": "R",
+            "param1": 0,
+            "param2": 1.0,
+        },
+        # Fuzzy sets for velocity
+        {
+            "domain": "velocity",
+            "name": "negative",
+            "function": "S",
+            "param1": -4.0,
+            "param2": -0.5,
+        },
+        {
+            "domain": "velocity",
+            "name": "zero",
+            "function": "triangular",
+            "param1": -1.0,
+            "param2": 1.0,
+        },
+        {
+            "domain": "velocity",
+            "name": "positive",
+            "function": "R",
+            "param1": 0.5,
+            "param2": 4.0,
+        },
+        # Fuzzy sets for angle
+        {
+            "domain": "angle",
+            "name": "negative",
+            "function": "S",
+            "param1": -0.5,
+            "param2": -0.05,
+        },
+        {
+            "domain": "angle",
+            "name": "zero",
+            "function": "triangular",
+            "param1": -0.1,
+            "param2": 0.1,
+        },
+        {
+            "domain": "angle",
+            "name": "positive",
+            "function": "R",
+            "param1": 0.05,
+            "param2": 0.5,
+        },
+        # Fuzzy sets for angular_velocity
+        {
+            "domain": "angular_velocity",
+            "name": "negative",
+            "function": "S",
+            "param1": -4.0,
+            "param2": -0.5,
+        },
+        {
+            "domain": "angular_velocity",
+            "name": "zero",
+            "function": "triangular",
+            "param1": -0.5,
+            "param2": 0.5,
+        },
+        {
+            "domain": "angular_velocity",
+            "name": "positive",
+            "function": "R",
+            "param1": 0.5,
+            "param2": 4.0,
+        },
+        # Fuzzy sets for action
+        {
+            "domain": "action",
+            "name": "strong_left",
+            "function": "S",
+            "param1": 0.0,
+            "param2": 0.25,
+        },
+        {
+            "domain": "action",
+            "name": "left",
+            "function": "triangular",
+            "param1": 0.1,
+            "param2": 0.5,
+        },
+        {
+            "domain": "action",
+            "name": "nothing",
+            "function": "triangular",
+            "param1": 0.425,
+            "param2": 0.575,
+        },
+        {
+            "domain": "action",
+            "name": "right",
+            "function": "triangular",
+            "param1": 0.5,
+            "param2": 0.9,
+        },
+        {
+            "domain": "action",
+            "name": "strong_right",
+            "function": "R",
+            "param1": 0.75,
+            "param2": 1.0,
+        },
+    ]
 
-    # Define fuzzy sets for velocity
-    velocity.negative = S(-4.0, -0.5)
-    velocity.zero = triangular(-1.0, 1.0, c=0.0)
-    velocity.positive = R(0.5, 4.0)
-
-    # Define fuzzy sets for angle
-    angle.negative = S(-0.5, -0.05)
-    angle.zero = triangular(-0.1, 0.1, c=0.0)
-    angle.positive = R(0.05, 0.5)
-
-    # Define fuzzy sets for angular velocity
-    angular_velocity.negative = S(-4.0, -0.5)
-    angular_velocity.zero = triangular(-0.5, 0.5, c=0.0)
-    angular_velocity.positive = R(0.5, 4.0)
-
-    # Define fuzzy sets for action
-    action.strong_left = S(0.0, 0.25)
-    action.left = triangular(0.1, 0.5, c=0.25)
-    action.nothing = triangular(0.425, 0.575, c=0.5)
-    action.right = triangular(0.5, 0.9, c=0.75)
-    action.strong_right = R(0.75, 1.0)
+    # Use generate_fuzzy_sets to create all fuzzy sets
+    domains = (position, velocity, angle, angular_velocity, action)
+    generate_fuzzy_sets(domains, specifications)
 
     return position, velocity, angle, angular_velocity, action
 
