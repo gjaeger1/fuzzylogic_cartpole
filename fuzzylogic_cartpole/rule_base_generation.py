@@ -80,17 +80,11 @@ def generate_rule_base(
         output_domains = [output_domains]
 
     # Get all fuzzy sets for each input domain
-    # Since dir() doesn't show dynamically added attributes on Domain objects,
-    # we need to explicitly check for known fuzzy set names
-    fuzzy_set_names = ["negative", "zero", "positive"]
+    # Access the _sets dictionary directly from each Domain object
     input_fuzzy_sets = []
     for domain in input_domains:
-        # Get all fuzzy sets defined on this domain by checking known names
-        sets = [
-            getattr(domain, name)
-            for name in fuzzy_set_names
-            if hasattr(domain, name) and isinstance(getattr(domain, name), Set)
-        ]
+        # Get all fuzzy sets defined on this domain from the _sets dictionary
+        sets = list(domain._sets.values())
         input_fuzzy_sets.append(sets)
 
     # Generate all combinations of input fuzzy sets
