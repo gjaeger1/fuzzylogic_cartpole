@@ -11,31 +11,46 @@ def get_standard_domains():
     # Define input domains
     # Cart position: typically -2.4 to 2.4
     position = Domain("position", -4.8, 4.8, res=0.01)
-    position.negative = S(-1.0, 0)  # S(-
-    position.zero = triangular(-0.5, 0.5, c=0.0)
-    position.positive = R(0, 1.0)  # R(0, 4.0)
 
     # Cart velocity: typically -inf to inf, but practically -2 to 2
     velocity = Domain("velocity", -4.0, 4.0, res=0.01)
-    velocity.negative = S(-4.0, -0.5)
-    velocity.zero = triangular(-1.0, 1.0, c=0.0)
-    velocity.positive = R(0.5, 4.0)
 
     # Pole angle: typically -0.418 to 0.418 radians (~24 degrees)
     angle = Domain("angle", -0.5, 0.5, res=0.01)
-    angle.negative = S(-0.5, -0.05)
-    angle.zero = triangular(-0.1, 0.1, c=0.0)
-    angle.positive = R(0.05, 0.5)
+
     # Pole angular velocity: typically -inf to inf, but practically -2 to 2
     angular_velocity = Domain("angular_velocity", -4.0, 4.0, res=0.01)
-    angular_velocity.negative = S(-4.0, -0.5)
-    angular_velocity.zero = triangular(-0.5, 0.5, c=0.0)
-    angular_velocity.positive = R(0.5, 4.0)
 
     # Define output domain
     # Action: 0 (push left) or 1 (push right)
     # We'll use a continuous output and threshold at 0.5
     action = Domain("action", 0.0, 1.0, res=0.01)
+
+    return position, velocity, angle, angular_velocity, action
+
+
+def get_standard_fuzzy_sets(position, velocity, angle, angular_velocity, action):
+    # Define fuzzy sets for position
+    position.negative = S(-1.0, 0)  # S(-
+    position.zero = triangular(-0.5, 0.5, c=0.0)
+    position.positive = R(0, 1.0)  # R(0, 4.0)
+
+    # Define fuzzy sets for velocity
+    velocity.negative = S(-4.0, -0.5)
+    velocity.zero = triangular(-1.0, 1.0, c=0.0)
+    velocity.positive = R(0.5, 4.0)
+
+    # Define fuzzy sets for angle
+    angle.negative = S(-0.5, -0.05)
+    angle.zero = triangular(-0.1, 0.1, c=0.0)
+    angle.positive = R(0.05, 0.5)
+
+    # Define fuzzy sets for angular velocity
+    angular_velocity.negative = S(-4.0, -0.5)
+    angular_velocity.zero = triangular(-0.5, 0.5, c=0.0)
+    angular_velocity.positive = R(0.5, 4.0)
+
+    # Define fuzzy sets for action
     action.strong_left = S(0.0, 0.25)
     action.left = triangular(0.1, 0.5, c=0.25)
     action.nothing = triangular(0.425, 0.575, c=0.5)
@@ -570,7 +585,7 @@ class FuzzyCartPoleController:
 
         # if we are not initialized, that is, if either domains or rules is none, we set up standard rules
         if self.domains is None or self.rules is None:
-            self.domains = get_standard_domains()
+            self.domains = get_standard_fuzzy_sets(*get_standard_domains())
             self.rules = get_standard_rules(*self.domains)
 
     def get_action(self, observation):
