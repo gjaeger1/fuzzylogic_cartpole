@@ -74,7 +74,9 @@ def main(config):
 
     # Load configuration
     print(f"Loading configuration from: {config}")
-    domain_specs, fuzzy_set_specs, rule_specs = load_specification(config)
+    domain_specs, fuzzy_set_specs, rule_specs, default_outputs = load_specification(
+        config
+    )
 
     # Generate domains, fuzzy sets, and rules
     domains = generate_fuzzy_sets(generate_domains(domain_specs), fuzzy_set_specs)
@@ -82,7 +84,7 @@ def main(config):
     rules = generate_rule_base(
         domains,
         rule_specs,
-        {"action": "nothing"},
+        default_outputs,
     )
 
     # Create environment with visualization enabled

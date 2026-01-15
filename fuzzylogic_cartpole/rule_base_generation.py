@@ -900,7 +900,9 @@ def get_standard_rules(position, velocity, angle, angular_velocity, action):
     return rules
 
 
-def save_specification(domain_specs, fuzzy_set_specs, rule_specs, filename):
+def save_specification(
+    domain_specs, fuzzy_set_specs, rule_specs, filename, default_outputs=None
+):
     """Write specifications to YAML file
 
     Args:
@@ -908,12 +910,16 @@ def save_specification(domain_specs, fuzzy_set_specs, rule_specs, filename):
         fuzzy_set_specs: List of fuzzy set specifications (for generate_fuzzy_sets)
         rule_specs: List of rule specifications (for generate_rule_base)
         filename: Path to the YAML file to write
+        default_outputs: Optional dict mapping output domain names to default fuzzy set names
     """
     specification_data = {
         "domains": domain_specs,
         "fuzzy_sets": fuzzy_set_specs,
         "rules": rule_specs,
     }
+
+    if default_outputs is not None:
+        specification_data["default_outputs"] = default_outputs
 
     with open(filename, "w") as f:
         yaml.dump(specification_data, f, default_flow_style=False, sort_keys=False)
@@ -926,7 +932,8 @@ def load_specification(filename):
         filename: Path to the YAML file to read
 
     Returns:
-        tuple: (domain_specs, fuzzy_set_specs, rule_specs)
+        tuple: (domain_specs, fuzzy_set_specs, rule_specs, default_outputs)
+               default_outputs will be None if not present in the YAML file
     """
     with open(filename, "r") as f:
         specification_data = yaml.safe_load(f)
@@ -934,8 +941,9 @@ def load_specification(filename):
     domain_specs = specification_data.get("domains", [])
     fuzzy_set_specs = specification_data.get("fuzzy_sets", [])
     rule_specs = specification_data.get("rules", [])
+    default_outputs = specification_data.get("default_outputs", None)
 
-    return domain_specs, fuzzy_set_specs, rule_specs
+    return domain_specs, fuzzy_set_specs, rule_specs, default_outputs
 
 
 def get_standard_specifications():
