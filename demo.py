@@ -13,6 +13,7 @@ from fuzzylogic_cartpole import (
     FuzzyCartPoleController,
 )
 from fuzzylogic_cartpole.rule_base_generation import (
+    generate_controller_from_file,
     generate_domains,
     generate_fuzzy_sets,
     generate_rule_base,
@@ -74,24 +75,11 @@ def main(config):
 
     # Load configuration
     print(f"Loading configuration from: {config}")
-    domain_specs, fuzzy_set_specs, rule_specs, default_outputs = load_specification(
-        config
-    )
-
-    # Generate domains, fuzzy sets, and rules
-    domains = generate_fuzzy_sets(generate_domains(domain_specs), fuzzy_set_specs)
-    position, velocity, angle, angular_velocity, action = domains
-    rules = generate_rule_base(
-        domains,
-        rule_specs,
-        default_outputs,
-    )
+    # Create fuzzy controller with loaded configuration
+    controller = generate_controller_from_file(config)
 
     # Create environment with visualization enabled
     env = gym.make("CartPole-v1", render_mode="human")
-
-    # Create fuzzy controller with loaded configuration
-    controller = FuzzyCartPoleController(domains, rules)
 
     # Run multiple episodes
     num_episodes = 1

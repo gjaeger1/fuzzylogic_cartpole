@@ -6,12 +6,6 @@ import numpy as np
 from fuzzylogic.classes import Domain, Rule, Set
 from fuzzylogic.functions import R, S, trapezoid, triangular
 
-from .rule_base_generation import (
-    get_standard_domains,
-    get_standard_fuzzy_sets,
-    get_standard_rules,
-)
-
 
 class FuzzyCartPoleController:
     """
@@ -25,11 +19,6 @@ class FuzzyCartPoleController:
         """Initialize the fuzzy logic controller with membership functions and rules."""
         self.domains = domains
         self.rules = rules
-
-        # if we are not initialized, that is, if either domains or rules is none, we set up standard rules
-        if self.domains is None or self.rules is None:
-            self.domains = get_standard_fuzzy_sets(*get_standard_domains())
-            self.rules = get_standard_rules(*self.domains)
 
     def get_action(self, observation):
         """

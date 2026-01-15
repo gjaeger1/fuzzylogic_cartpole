@@ -7,6 +7,8 @@ import yaml
 from fuzzylogic.classes import Domain, Rule, Set
 from fuzzylogic.functions import R, S, trapezoid, triangular
 
+from .controller import FuzzyCartPoleController
+
 
 def generate_domains(specification):
     """Generate Domain object from specification."""
@@ -1638,15 +1640,17 @@ def get_standard_specifications():
 
 
 def generate_controller_from_file(filename):
-    domain_specs, fuzzy_set_specs, rule_specs = load_specification(filename)
+    domain_specs, fuzzy_set_specs, rule_specs, default_outputs = load_specification(
+        filename
+    )
 
     # Generate domains, fuzzy sets, and rules
     domains = generate_fuzzy_sets(generate_domains(domain_specs), fuzzy_set_specs)
     rules = generate_rule_base(
         domains,
         rule_specs,
-        {"action": "nothing"},
+        default_outputs,
     )
 
     # Create fuzzy controller with loaded configuration
-    controller = FuzzyCartPoleController(domains, rules)
+    return FuzzyCartPoleController(domains, rules)
