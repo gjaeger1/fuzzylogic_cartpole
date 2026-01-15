@@ -441,12 +441,12 @@ def optimize_fuzzy_sets(
 
         # Add evaluation operator
         if use_parallel:
+            # Parallel evaluation already returns a list
             pipeline.append(synchronous.eval_pool(client=client, size=pop_size))
         else:
+            # Sequential evaluation returns a generator, need to convert to list
             pipeline.append(ops.evaluate)
-
-        # Add pool to consume generator and convert to list (must be before probes)
-        pipeline.append(ops.pool(size=pop_size))
+            pipeline.append(ops.pool(size=pop_size))
 
         # Add probes and tracking
         pipeline.extend(probes_list)
