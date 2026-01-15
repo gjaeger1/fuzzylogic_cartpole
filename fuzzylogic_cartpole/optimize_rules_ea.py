@@ -20,11 +20,10 @@ from leap_ec.problem import FunctionProblem
 from matplotlib import pyplot as plt
 
 from .controller import FuzzyCartPoleController
-from .defaults import get_standard_domain_specs, get_standard_fuzzy_sets_specs
 from .rule_base_generation import (
+    generate_domains,
+    generate_fuzzy_sets,
     generate_rule_base,
-    get_standard_domains,
-    get_standard_fuzzy_sets,
     save_specification,
 )
 
@@ -33,55 +32,68 @@ from .rule_base_generation import (
 ##############################
 
 
-def get_input_combinations(position, velocity, angle, angular_velocity):
+def get_input_combinations(domains, input_domain_names):
     """Generate all possible combinations of input fuzzy sets.
+
+    Args:
+        domains: Tuple of all Domain objects
+        input_domain_names: List of input domain names (e.g., ['position', 'velocity', 'angle', 'angular_velocity'])
 
     Returns:
         list: List of tuples, each containing a combination of input fuzzy sets
     """
-    # Get all fuzzy sets for each input domain
-    input_domains = [position, velocity, angle, angular_velocity]
-    input_fuzzy_sets = []
+    # Create domain dict for lookup
+    domain_dict = {d._name: d for d in domains}
 
-    for domain in input_domains:
+    # Get all fuzzy sets for each input domain
+    input_fuzzy_sets = []
+    for domain_name in input_domain_names:
+        domain = domain_dict[domain_name]
         sets = list(domain._sets.values())
         input_fuzzy_sets.append(sets)
 
-    # Generate all combinations (3 x 3 x 3 x 3 = 81 combinations)
+    # Generate all combinations
     all_combinations = list(itertools.product(*input_fuzzy_sets))
 
     return all_combinations
 
 
-def get_output_fuzzy_sets(action_domain):
-    """Get ordered list of output fuzzy sets.
+def get_output_fuzzy_sets(output_domain):
+    """Get ordered list of output fuzzy sets from a domain.
+
+    Args:
+        output_domain: The output Domain object
 
     Returns:
-        list: Ordered list of fuzzy set names for the action domain
+        list: Ordered list of fuzzy set names for the output domain
     """
-    # Order: strong_left (0), left (1), nothing (2), right (3), strong_right (4)
-    return ["strong_left", "left", "nothing", "right", "strong_right"]
+    # Return all fuzzy set names in the order they were defined
+    return list(output_domain._sets.keys())
 
 
-def decode_genome_to_rules(genome, domains):
+def decode_genome_to_rules(genome, domains, input_domain_names, output_domain_name):
     """Convert integer genome to rule specifications.
 
     Args:
-        genome: List/array of integers (0-4), one per rule
-        domains: Tuple of (position, velocity, angle, angular_velocity, action) domains
+        genome: List/array of integers, one per rule
+        domains: Tuple of all Domain objects
+        input_domain_names: List of input domain names in order
+        output_domain_name: Name of the output domain
 
     Returns:
         list: Rule specifications suitable for generate_rule_base()
     """
-    position, velocity, angle, angular_velocity, action = domains
+    # Create domain dict for lookup
+    domain_dict = {d._name: d for d in domains}
+
+    # Get output domain
+    output_domain = domain_dict[output_domain_name]
 
     # Get all input combinations
-    input_combinations = get_input_combinations(
-        position, velocity, angle, angular_velocity
-    )
+    input_combinations = get_input_combinations(domains, input_domain_names)
 
     # Get output fuzzy set names
-    output_sets = get_output_fuzzy_sets(action)
+    output_sets = get_output_fuzzy_sets(output_domain)
 
     # Create rule specifications
     rule_specs = []
@@ -92,14 +104,11 @@ def decode_genome_to_rules(genome, domains):
         output_set_name = output_sets[output_idx]
 
         # Create rule specification
-        # combo is (position_set, velocity_set, angle_set, angular_velocity_set)
         rule_spec = {
-            "output_domain": "action",
+            "output_domain": output_domain_name,
             "inputs": [
-                f"position.{combo[0].name}",
-                f"velocity.{combo[1].name}",
-                f"angle.{combo[2].name}",
-                f"angular_velocity.{combo[3].name}",
+                f"{input_domain_names[i]}.{combo[i].name}"
+                for i in range(len(input_domain_names))
             ],
             "output": output_set_name,
         }
@@ -108,19 +117,25 @@ def decode_genome_to_rules(genome, domains):
     return rule_specs
 
 
-def genome_to_controller(genome, domains, verbose=False):
+def genome_to_controller(
+    genome, domains, input_domain_names, output_domain_name, verbose=False
+):
     """Convert genome to a FuzzyCartPoleController.
 
     Args:
-        genome: List/array of integers (0-4), one per rule
-        domains: Tuple of (position, velocity, angle, angular_velocity, action) domains
+        genome: List/array of integers, one per rule
+        domains: Tuple of all Domain objects
+        input_domain_names: List of input domain names in order
+        output_domain_name: Name of the output domain
         verbose: If True, controller will print debug information
 
     Returns:
         FuzzyCartPoleController: Controller with rules encoded by genome
     """
     # Decode genome to rule specifications
-    rule_specs = decode_genome_to_rules(genome, domains)
+    rule_specs = decode_genome_to_rules(
+        genome, domains, input_domain_names, output_domain_name
+    )
 
     # Generate rule base
     rules = generate_rule_base(list(domains), rule_specs, default_outputs=None)
@@ -179,10 +194,21 @@ def evaluate_controller(
     return total_reward / num_episodes
 
 
-def create_fitness_function(num_episodes=5, max_steps=500):
+def create_fitness_function(
+    domain_specs,
+    fuzzy_set_specs,
+    input_domain_names,
+    output_domain_name,
+    num_episodes=5,
+    max_steps=500,
+):
     """Create a fitness function for evaluating genomes.
 
     Args:
+        domain_specs: List of domain specifications (for generate_domains)
+        fuzzy_set_specs: List of fuzzy set specifications (for generate_fuzzy_sets)
+        input_domain_names: List of input domain names in order
+        output_domain_name: Name of the output domain
         num_episodes: Number of episodes to average over
         max_steps: Maximum steps per episode
 
@@ -193,17 +219,16 @@ def create_fitness_function(num_episodes=5, max_steps=500):
     def fitness_function(genome):
         """Evaluate fitness of a genome."""
         # Recreate domains inside the function to avoid serialization issues
-        domains = get_standard_domains()
-        position, velocity, angle, angular_velocity, action = get_standard_fuzzy_sets(
-            *domains
-        )
-        full_domains = (position, velocity, angle, angular_velocity, action)
+        domains = generate_domains(domain_specs)
+        domains = generate_fuzzy_sets(domains, fuzzy_set_specs)
 
         # Create environment (no rendering for parallel workers)
         env = gym.make("CartPole-v1", render_mode=None)
 
         # Convert genome to controller
-        controller = genome_to_controller(genome, full_domains, verbose=False)
+        controller = genome_to_controller(
+            genome, domains, input_domain_names, output_domain_name, verbose=False
+        )
 
         # Evaluate controller
         fitness = evaluate_controller(
@@ -254,50 +279,57 @@ def build_probes(genomes_file=None):
 ##############################
 
 
-def create_initial_population_from_standard(domains, pop_size, num_rules):
-    """Create initial population with some individuals based on standard rules.
+def create_initial_genome_from_specs(
+    domains,
+    input_domain_names,
+    output_domain_name,
+    initial_rule_specs,
+    default_output_name,
+    num_rules,
+):
+    """Create initial genome based on provided rule specifications.
 
     Args:
-        domains: Tuple of fuzzy domains
-        pop_size: Population size
-        num_rules: Number of rules (81 for 3x3x3x3 inputs)
+        domains: Tuple of all Domain objects
+        input_domain_names: List of input domain names in order
+        output_domain_name: Name of the output domain
+        initial_rule_specs: List of rule specifications to use as starting point
+        default_output_name: Name of default output fuzzy set for unspecified rules
+        num_rules: Total number of rules
 
     Returns:
-        numpy.ndarray: Initial genome with standard rules as numpy array
+        numpy.ndarray: Initial genome as numpy array
     """
-    from .defaults import get_standard_rules_spec
+    # Create domain dict for lookup
+    domain_dict = {d._name: d for d in domains}
+    output_domain = domain_dict[output_domain_name]
 
-    # Get standard rule specifications
-    standard_specs = get_standard_rules_spec()
+    # Get all input combinations
+    input_combinations = get_input_combinations(domains, input_domain_names)
+    output_sets = get_output_fuzzy_sets(output_domain)
 
-    # Create a genome representing standard rules
-    position, velocity, angle, angular_velocity, action = domains
-    input_combinations = get_input_combinations(
-        position, velocity, angle, angular_velocity
-    )
-    output_sets = get_output_fuzzy_sets(action)
+    # Initialize with default output
+    default_idx = output_sets.index(default_output_name)
+    genome = np.full(num_rules, default_idx, dtype=int)
 
-    # Initialize with default (nothing = 2)
-    standard_genome = np.full(num_rules, 2, dtype=int)  # nothing is index 2
-
-    # Update with specified rules from standard_specs
-    for spec in standard_specs:
+    # Update with specified rules
+    for spec in initial_rule_specs:
         # Find which combination this rule corresponds to
         for idx, combo in enumerate(input_combinations):
             # Check if this combo matches the spec inputs
-            if (
-                f"position.{combo[0].name}" == spec["inputs"][0]
-                and f"velocity.{combo[1].name}" == spec["inputs"][1]
-                and f"angle.{combo[2].name}" == spec["inputs"][2]
-                and f"angular_velocity.{combo[3].name}" == spec["inputs"][3]
-            ):
+            inputs_match = all(
+                f"{input_domain_names[i]}.{combo[i].name}" == spec["inputs"][i]
+                for i in range(len(input_domain_names))
+            )
+
+            if inputs_match:
                 # Find output index
                 output_name = spec["output"]
                 output_idx = output_sets.index(output_name)
-                standard_genome[idx] = output_idx
+                genome[idx] = output_idx
                 break
 
-    return standard_genome
+    return genome
 
 
 ##############################
@@ -306,12 +338,17 @@ def create_initial_population_from_standard(domains, pop_size, num_rules):
 
 
 def optimize_fuzzy_rules(
+    domain_specs,
+    fuzzy_set_specs,
+    input_domain_names,
+    output_domain_name,
     pop_size=20,
     generations=50,
     num_episodes=3,
     max_steps=500,
     mutation_rate=0.15,
-    use_standard_seed=True,
+    initial_rule_specs=None,
+    default_output_name=None,
     output_file="optimized_rules.csv",
     yaml_file="optimized_rules.yaml",
     use_parallel=True,
@@ -319,12 +356,17 @@ def optimize_fuzzy_rules(
     """Optimize fuzzy rule base using evolutionary algorithm.
 
     Args:
+        domain_specs: List of domain specifications (for generate_domains)
+        fuzzy_set_specs: List of fuzzy set specifications (for generate_fuzzy_sets)
+        input_domain_names: List of input domain names in order (e.g., ['position', 'velocity', 'angle', 'angular_velocity'])
+        output_domain_name: Name of the output domain (e.g., 'action')
         pop_size: Population size
         generations: Number of generations
         num_episodes: Episodes per fitness evaluation
         max_steps: Max steps per episode
         mutation_rate: Probability of mutation per gene
-        use_standard_seed: Whether to seed population with standard rules
+        initial_rule_specs: Optional list of rule specifications to seed first individual
+        default_output_name: Default output fuzzy set name for unseeded rules (required if initial_rule_specs provided)
         output_file: File to save best genomes (CSV)
         yaml_file: File to save best rule base (YAML)
         use_parallel: Whether to use parallel evaluation with dask
@@ -332,27 +374,53 @@ def optimize_fuzzy_rules(
 
     # Setup domains and fuzzy sets
     print("Setting up fuzzy domains and sets...")
-    domains = get_standard_domains()
-    position, velocity, angle, angular_velocity, action = get_standard_fuzzy_sets(
-        *domains
-    )
-    domains = (position, velocity, angle, angular_velocity, action)
+    domains = generate_domains(domain_specs)
+    domains = generate_fuzzy_sets(domains, fuzzy_set_specs)
 
-    # Calculate number of rules (3x3x3x3 = 81)
-    num_rules = 3 * 3 * 3 * 3
+    # Create domain dict for calculations
+    domain_dict = {d._name: d for d in domains}
+
+    # Calculate number of rules based on input domain sizes
+    num_rules = 1
+    for domain_name in input_domain_names:
+        domain = domain_dict[domain_name]
+        num_rules *= len(domain._sets)
     print(f"Number of rules to optimize: {num_rules}")
 
-    # Create fitness function (doesn't need domains - recreates them internally)
-    fitness_func = create_fitness_function(num_episodes, max_steps)
+    # Get number of output fuzzy sets
+    output_domain = domain_dict[output_domain_name]
+    num_outputs = len(output_domain._sets)
+    print(f"Number of output fuzzy sets: {num_outputs}")
 
-    # Initialize with standard genome if requested
-    if use_standard_seed:
-        print("Creating initial population with standard rules as seed...")
-        standard_genome = create_initial_population_from_standard(
-            domains, pop_size, num_rules
+    # Create fitness function
+    fitness_func = create_fitness_function(
+        domain_specs,
+        fuzzy_set_specs,
+        input_domain_names,
+        output_domain_name,
+        num_episodes,
+        max_steps,
+    )
+
+    # Initialize with provided rule specs if requested
+    if initial_rule_specs is not None:
+        if default_output_name is None:
+            raise ValueError(
+                "default_output_name must be provided when initial_rule_specs is given"
+            )
+        print(
+            "Creating initial population with provided rule specifications as seed..."
+        )
+        initial_genome = create_initial_genome_from_specs(
+            domains,
+            input_domain_names,
+            output_domain_name,
+            initial_rule_specs,
+            default_output_name,
+            num_rules,
         )
     else:
-        standard_genome = None
+        initial_genome = None
 
     # Setup the evolutionary algorithm
     print(f"Starting evolutionary optimization...")
@@ -375,25 +443,25 @@ def optimize_fuzzy_rules(
         """Run the evolutionary algorithm."""
         with open(output_file, "w") as genomes_file:
             # Create initializer
-            if standard_genome is not None:
-                # Custom initializer that includes standard genome
+            if initial_genome is not None:
+                # Custom initializer that includes initial genome
                 def custom_initializer():
-                    # First individual is the standard genome (convert to numpy array)
-                    yield np.array(standard_genome, dtype=int)
+                    # First individual is the initial genome
+                    yield np.array(initial_genome, dtype=int)
                     # Rest are random
                     for _ in range(pop_size - 1):
-                        yield np.random.randint(0, 5, size=num_rules)
+                        yield np.random.randint(0, num_outputs, size=num_rules)
 
                 init_func = custom_initializer()
             else:
-                init_func = create_int_vector(bounds=[(0, 4)] * num_rules)
+                init_func = create_int_vector(bounds=[(0, num_outputs - 1)] * num_rules)
 
             # Build the pipeline
             pipeline = [
                 ops.tournament_selection,
                 ops.clone,
                 mutate_randint(
-                    bounds=np.array([[0, 4]] * num_rules),
+                    bounds=np.array([[0, num_outputs - 1]] * num_rules),
                     expected_num_mutations=int(num_rules * mutation_rate),
                 ),
                 ops.UniformCrossover(p_swap=0.1),
@@ -416,7 +484,7 @@ def optimize_fuzzy_rules(
                 problem=FunctionProblem(fitness_func, maximize=True),
                 representation=Representation(
                     initialize=init_func
-                    if standard_genome is None
+                    if initial_genome is None
                     else lambda: next(init_func),
                     individual_cls=DistributedIndividual
                     if use_parallel
@@ -445,12 +513,10 @@ def optimize_fuzzy_rules(
         # Convert genome to rule specifications
         best_genome = best_individual["genome"]
 
-        # Get domain and fuzzy set specifications
-        domain_specs = get_standard_domain_specs()
-        fuzzy_set_specs = get_standard_fuzzy_sets_specs()
-
         # Convert genome to rule specifications
-        rule_specs = decode_genome_to_rules(best_genome, domains)
+        rule_specs = decode_genome_to_rules(
+            best_genome, domains, input_domain_names, output_domain_name
+        )
 
         # Save to YAML
         save_specification(
@@ -477,6 +543,13 @@ def optimize_fuzzy_rules(
 ##############################
 
 if __name__ == "__main__":
+    # Import default specifications
+    from .defaults import (
+        get_standard_domain_specs,
+        get_standard_fuzzy_sets_specs,
+        get_standard_rules_spec,
+    )
+
     # When running the test harness, just run for two generations
     if os.environ.get(test_env_var, False) == "True":
         generations = 2
@@ -485,13 +558,27 @@ if __name__ == "__main__":
         generations = 50
         pop_size = 20
 
+    # Get specifications
+    domain_specs = get_standard_domain_specs()
+    fuzzy_set_specs = get_standard_fuzzy_sets_specs()
+    initial_rule_specs = get_standard_rules_spec()
+
+    # Define domain configuration
+    input_domain_names = ["position", "velocity", "angle", "angular_velocity"]
+    output_domain_name = "action"
+
     optimize_fuzzy_rules(
+        domain_specs=domain_specs,
+        fuzzy_set_specs=fuzzy_set_specs,
+        input_domain_names=input_domain_names,
+        output_domain_name=output_domain_name,
         pop_size=pop_size,
         generations=generations,
         num_episodes=3,
         max_steps=500,
         mutation_rate=0.15,
-        use_standard_seed=True,
+        initial_rule_specs=initial_rule_specs,
+        default_output_name="nothing",
         output_file="optimized_rules.csv",
         yaml_file="optimized_rules.yaml",
         use_parallel=True,  # Now safe for parallel execution
