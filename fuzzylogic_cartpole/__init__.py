@@ -7,5 +7,6 @@ A simple example on how to use fuzzy logic to control the CartPole gymnasium env
 __version__ = "0.1.0"
 
 from .controller import FuzzyCartPoleController
+from .visualize_fuzzy_sets import visualize_fuzzy_sets
 
-__all__ = ["FuzzyCartPoleController"]
+__all__ = ["FuzzyCartPoleController", "visualize_fuzzy_sets"]
