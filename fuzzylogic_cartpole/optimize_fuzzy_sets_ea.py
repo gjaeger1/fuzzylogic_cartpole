@@ -317,7 +317,7 @@ def create_initial_genome_from_specs(fuzzy_set_specs):
 def optimize_fuzzy_sets(
     rule_base_file,
     output_file="optimized_fuzzy_sets.yaml",
-    use_initial_seed=True,
+    use_initial_seed=False,
     pop_size=50,
     generations=100,
     mutation_std=0.1,
