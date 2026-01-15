@@ -49,15 +49,16 @@ def generate_fuzzy_sets(domains, specifications):
 
         # Create the fuzzy set based on the function type
         if func_type == "S":
-            fuzzy_set = S(param1, param2)
+            func = S(param1, param2)
         elif func_type == "R":
-            fuzzy_set = R(param1, param2)
+            func = R(param1, param2)
         elif func_type == "triangular":
-            fuzzy_set = triangular(param1, param2)
+            func = triangular(param1, param2)
         else:
             raise ValueError(f"Unknown function type: {func_type}")
 
-        # Assign the fuzzy set to the domain
+        # Create a Set object with the function
+        fuzzy_set = Set(func)
         setattr(domain, set_name, fuzzy_set)
 
     return domains
@@ -79,13 +80,16 @@ def generate_rule_base(
         output_domains = [output_domains]
 
     # Get all fuzzy sets for each input domain
+    # Since dir() doesn't show dynamically added attributes on Domain objects,
+    # we need to explicitly check for known fuzzy set names
+    fuzzy_set_names = ["negative", "zero", "positive"]
     input_fuzzy_sets = []
     for domain in input_domains:
-        # Get all fuzzy sets defined on this domain (attributes that are Set objects)
+        # Get all fuzzy sets defined on this domain by checking known names
         sets = [
-            getattr(domain, attr)
-            for attr in dir(domain)
-            if not attr.startswith("_") and isinstance(getattr(domain, attr), Set)
+            getattr(domain, name)
+            for name in fuzzy_set_names
+            if hasattr(domain, name) and isinstance(getattr(domain, name), Set)
         ]
         input_fuzzy_sets.append(sets)
 
