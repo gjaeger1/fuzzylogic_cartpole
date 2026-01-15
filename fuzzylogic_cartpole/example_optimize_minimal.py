@@ -15,27 +15,42 @@ from leap_ec.algorithm import generational_ea
 from leap_ec.distrib import DistributedIndividual, synchronous
 from leap_ec.int_rep.initializers import create_int_vector
 from leap_ec.int_rep.ops import mutate_randint
+from leap_ec.problem import FunctionProblem
 from matplotlib import pyplot as plt
+
+from .controller import FuzzyCartPoleController
 
 # Import from the fuzzylogic_cartpole package
 try:
+    from fuzzylogic_cartpole.defaults import (
+        get_standard_domain_specs,
+        get_standard_fuzzy_sets_specs,
+    )
     from fuzzylogic_cartpole.optimize_rules_ea import (
         create_fitness_function,
         create_initial_population_from_standard,
+        decode_genome_to_rules,
         genome_to_controller,
     )
     from fuzzylogic_cartpole.rule_base_generation import (
         get_standard_domains,
         get_standard_fuzzy_sets,
+        save_specification,
     )
 except ImportError:
     # Alternative import for when running as script
+    from defaults import get_standard_domain_specs, get_standard_fuzzy_sets_specs
     from optimize_rules_ea import (
         create_fitness_function,
         create_initial_population_from_standard,
+        decode_genome_to_rules,
         genome_to_controller,
     )
-    from rule_base_generation import get_standard_domains, get_standard_fuzzy_sets
+    from rule_base_generation import (
+        get_standard_domains,
+        get_standard_fuzzy_sets,
+        save_specification,
+    )
 
 
 def minimal_optimize():
@@ -65,9 +80,9 @@ def minimal_optimize():
     num_rules = 81
     print(f"   Total rules to optimize: {num_rules}")
 
-    # Create fitness function
+    # Create fitness function (recreates domains internally to avoid serialization issues)
     print("\n2. Creating fitness function...")
-    fitness_func = create_fitness_function(domains, NUM_EPISODES, MAX_STEPS)
+    fitness_func = create_fitness_function(NUM_EPISODES, MAX_STEPS)
 
     # Get standard genome as starting point
     print("\n3. Creating initial population with standard rules...")
@@ -90,9 +105,9 @@ def minimal_optimize():
     # Custom initializer that includes standard genome
     def custom_initializer():
         """Generate initial population with standard genome as seed."""
-        yield standard_genome
+        yield np.array(standard_genome, dtype=int)
         for _ in range(POP_SIZE - 1):
-            yield np.random.randint(0, 5, size=num_rules).tolist()
+            yield np.random.randint(0, 5, size=num_rules)
 
     init_func = custom_initializer()
 
@@ -101,7 +116,8 @@ def minimal_optimize():
         ops.tournament_selection,
         ops.clone,
         mutate_randint(
-            bounds=(0, 4), expected_num_mutations=int(num_rules * MUTATION_RATE)
+            bounds=np.array([[0, 4]] * num_rules),
+            expected_num_mutations=int(num_rules * MUTATION_RATE),
         ),
         ops.UniformCrossover(p_swap=0.1),
     ]
@@ -134,7 +150,7 @@ def minimal_optimize():
         final_pop = generational_ea(
             max_generations=GENERATIONS,
             pop_size=POP_SIZE,
-            problem=fitness_func,
+            problem=FunctionProblem(fitness_func, maximize=True),
             representation=Representation(
                 initialize=lambda: next(init_func),
                 individual_cls=DistributedIndividual if USE_PARALLEL else Individual,
@@ -168,10 +184,32 @@ def minimal_optimize():
                 f.write(str(best_genome))
             print(f"\nBest genome saved to: {output_file}")
 
+            # Save best rule base to YAML
+            yaml_file = "minimal_optimized_rules.yaml"
+            print(f"\nSaving best rule base to {yaml_file}...")
+
+            # Get domain and fuzzy set specifications
+            domain_specs = get_standard_domain_specs()
+            fuzzy_set_specs = get_standard_fuzzy_sets_specs()
+
+            # Convert genome to rule specifications
+            rule_specs = decode_genome_to_rules(best_genome, domains)
+
+            # Save to YAML
+            save_specification(
+                domain_specs,
+                fuzzy_set_specs,
+                rule_specs,
+                yaml_file,
+                default_outputs=None,
+            )
+
+            print(f"Best rule base saved to {yaml_file}")
+
             # Test the best controller
             print("\n6. Testing optimized controller (5 episodes)...")
             env = gym.make("CartPole-v1", render_mode=None)
-            controller = genome_to_controller(best_genome, domains)
+            controller = genome_to_controller(best_genome, domains, verbose=False)
 
             test_rewards = []
             for ep in range(5):

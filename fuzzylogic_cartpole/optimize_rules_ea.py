@@ -16,13 +16,16 @@ from leap_ec.algorithm import generational_ea
 from leap_ec.distrib import DistributedIndividual, synchronous
 from leap_ec.int_rep.initializers import create_int_vector
 from leap_ec.int_rep.ops import mutate_randint
+from leap_ec.problem import FunctionProblem
 from matplotlib import pyplot as plt
 
 from .controller import FuzzyCartPoleController
+from .defaults import get_standard_domain_specs, get_standard_fuzzy_sets_specs
 from .rule_base_generation import (
     generate_rule_base,
     get_standard_domains,
     get_standard_fuzzy_sets,
+    save_specification,
 )
 
 ##############################
@@ -163,7 +166,9 @@ def evaluate_controller(
 
             # Take step in environment
             observation, reward, terminated, truncated, info = environment.step(action)
-            episode_reward += reward
+            episode_reward += reward - (
+                abs(observation[0]) + abs(observation[2])
+            )  # subtract positional and angular error
 
             if terminated or truncated:
                 break
@@ -174,11 +179,10 @@ def evaluate_controller(
     return total_reward / num_episodes
 
 
-def create_fitness_function(domains, num_episodes=5, max_steps=500):
+def create_fitness_function(num_episodes=5, max_steps=500):
     """Create a fitness function for evaluating genomes.
 
     Args:
-        domains: Tuple of fuzzy domains
         num_episodes: Number of episodes to average over
         max_steps: Maximum steps per episode
 
@@ -188,11 +192,18 @@ def create_fitness_function(domains, num_episodes=5, max_steps=500):
 
     def fitness_function(genome):
         """Evaluate fitness of a genome."""
+        # Recreate domains inside the function to avoid serialization issues
+        domains = get_standard_domains()
+        position, velocity, angle, angular_velocity, action = get_standard_fuzzy_sets(
+            *domains
+        )
+        full_domains = (position, velocity, angle, angular_velocity, action)
+
         # Create environment (no rendering for parallel workers)
         env = gym.make("CartPole-v1", render_mode=None)
 
         # Convert genome to controller
-        controller = genome_to_controller(genome, domains)
+        controller = genome_to_controller(genome, full_domains, verbose=False)
 
         # Evaluate controller
         fitness = evaluate_controller(
@@ -252,7 +263,7 @@ def create_initial_population_from_standard(domains, pop_size, num_rules):
         num_rules: Number of rules (81 for 3x3x3x3 inputs)
 
     Returns:
-        list: Initial population with at least one individual having standard rules
+        numpy.ndarray: Initial genome with standard rules as numpy array
     """
     from .defaults import get_standard_rules_spec
 
@@ -267,7 +278,7 @@ def create_initial_population_from_standard(domains, pop_size, num_rules):
     output_sets = get_output_fuzzy_sets(action)
 
     # Initialize with default (nothing = 2)
-    standard_genome = [2] * num_rules  # nothing is index 2
+    standard_genome = np.full(num_rules, 2, dtype=int)  # nothing is index 2
 
     # Update with specified rules from standard_specs
     for spec in standard_specs:
@@ -302,6 +313,7 @@ def optimize_fuzzy_rules(
     mutation_rate=0.15,
     use_standard_seed=True,
     output_file="optimized_rules.csv",
+    yaml_file="optimized_rules.yaml",
     use_parallel=True,
 ):
     """Optimize fuzzy rule base using evolutionary algorithm.
@@ -313,7 +325,8 @@ def optimize_fuzzy_rules(
         max_steps: Max steps per episode
         mutation_rate: Probability of mutation per gene
         use_standard_seed: Whether to seed population with standard rules
-        output_file: File to save best genomes
+        output_file: File to save best genomes (CSV)
+        yaml_file: File to save best rule base (YAML)
         use_parallel: Whether to use parallel evaluation with dask
     """
 
@@ -329,8 +342,8 @@ def optimize_fuzzy_rules(
     num_rules = 3 * 3 * 3 * 3
     print(f"Number of rules to optimize: {num_rules}")
 
-    # Create fitness function
-    fitness_func = create_fitness_function(domains, num_episodes, max_steps)
+    # Create fitness function (doesn't need domains - recreates them internally)
+    fitness_func = create_fitness_function(num_episodes, max_steps)
 
     # Initialize with standard genome if requested
     if use_standard_seed:
@@ -347,6 +360,17 @@ def optimize_fuzzy_rules(
     print(f"Generations: {generations}")
     print(f"Parallel evaluation: {use_parallel}")
 
+    # Track best individual
+    best_individual = {"genome": None, "fitness": float("-inf")}
+
+    def track_best(population):
+        """Probe to track the best individual across all generations."""
+        best = max(population, key=lambda ind: ind.fitness)
+        if best.fitness > best_individual["fitness"]:
+            best_individual["genome"] = best.genome.copy()
+            best_individual["fitness"] = best.fitness
+        return population
+
     def run_evolution(client=None):
         """Run the evolutionary algorithm."""
         with open(output_file, "w") as genomes_file:
@@ -354,11 +378,11 @@ def optimize_fuzzy_rules(
             if standard_genome is not None:
                 # Custom initializer that includes standard genome
                 def custom_initializer():
-                    # First individual is the standard genome
-                    yield standard_genome
+                    # First individual is the standard genome (convert to numpy array)
+                    yield np.array(standard_genome, dtype=int)
                     # Rest are random
                     for _ in range(pop_size - 1):
-                        yield np.random.randint(0, 5, size=num_rules).tolist()
+                        yield np.random.randint(0, 5, size=num_rules)
 
                 init_func = custom_initializer()
             else:
@@ -369,7 +393,8 @@ def optimize_fuzzy_rules(
                 ops.tournament_selection,
                 ops.clone,
                 mutate_randint(
-                    bounds=(0, 4), expected_num_mutations=int(num_rules * mutation_rate)
+                    bounds=np.array([[0, 4]] * num_rules),
+                    expected_num_mutations=int(num_rules * mutation_rate),
                 ),
                 ops.UniformCrossover(p_swap=0.1),
             ]
@@ -382,12 +407,13 @@ def optimize_fuzzy_rules(
 
             # Add probes
             pipeline.extend(build_probes(genomes_file))
+            pipeline.append(track_best)
 
             # Run EA
             generational_ea(
                 max_generations=generations,
                 pop_size=pop_size,
-                problem=fitness_func,
+                problem=FunctionProblem(fitness_func, maximize=True),
                 representation=Representation(
                     initialize=init_func
                     if standard_genome is None
@@ -410,6 +436,34 @@ def optimize_fuzzy_rules(
         run_evolution()
 
     print(f"\nOptimization complete! Best genomes saved to {output_file}")
+
+    # Save best rule base to YAML
+    if best_individual["genome"] is not None:
+        print(f"\nSaving best rule base to {yaml_file}...")
+        print(f"Best fitness: {best_individual['fitness']:.2f}")
+
+        # Convert genome to rule specifications
+        best_genome = best_individual["genome"]
+
+        # Get domain and fuzzy set specifications
+        domain_specs = get_standard_domain_specs()
+        fuzzy_set_specs = get_standard_fuzzy_sets_specs()
+
+        # Convert genome to rule specifications
+        rule_specs = decode_genome_to_rules(best_genome, domains)
+
+        # Save to YAML
+        save_specification(
+            domain_specs,
+            fuzzy_set_specs,
+            rule_specs,
+            yaml_file,
+            default_outputs=None,
+        )
+
+        print(f"Best rule base saved to {yaml_file}")
+    else:
+        print("\nWarning: No best individual found to save.")
 
     # Show plots if not in test mode
     if os.environ.get(test_env_var, False) != "True":
@@ -439,5 +493,6 @@ if __name__ == "__main__":
         mutation_rate=0.15,
         use_standard_seed=True,
         output_file="optimized_rules.csv",
-        use_parallel=True,
+        yaml_file="optimized_rules.yaml",
+        use_parallel=True,  # Now safe for parallel execution
     )

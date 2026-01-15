@@ -21,6 +21,7 @@ from leap_ec import Individual, Representation, ops, probe
 from leap_ec.algorithm import generational_ea
 from leap_ec.int_rep.initializers import create_int_vector
 from leap_ec.int_rep.ops import mutate_randint
+from leap_ec.problem import FunctionProblem
 
 from .controller import FuzzyCartPoleController
 
@@ -194,8 +195,8 @@ def demo():
     final_pop = generational_ea(
         max_generations=generations,
         pop_size=pop_size,
-        # Fitness function
-        problem=evaluate_fitness,
+        # Fitness function wrapped as a Problem
+        problem=FunctionProblem(evaluate_fitness, maximize=True),
         # Representation: integer vectors with values 0-4
         representation=Representation(
             initialize=create_int_vector(bounds=[(0, 4)] * num_rules)
@@ -205,7 +206,8 @@ def demo():
             ops.tournament_selection,  # Select parents via tournament
             ops.clone,  # Clone for variation
             mutate_randint(  # Mutate some genes
-                bounds=(0, 4), expected_num_mutations=int(num_rules * mutation_rate)
+                bounds=np.array([[0, 4]] * num_rules),
+                expected_num_mutations=int(num_rules * mutation_rate),
             ),
             ops.UniformCrossover(p_swap=0.1),  # Crossover with 10% swap probability
             ops.evaluate,  # Evaluate fitness
