@@ -15,10 +15,17 @@ class FuzzyCartPoleController:
     the cart position, cart velocity, pole angle, and pole angular velocity.
     """
 
-    def __init__(self, domains=None, rules=None):
-        """Initialize the fuzzy logic controller with membership functions and rules."""
+    def __init__(self, domains=None, rules=None, verbose=False):
+        """Initialize the fuzzy logic controller with membership functions and rules.
+
+        Args:
+            domains: Tuple of fuzzy logic domains
+            rules: Fuzzy logic rules
+            verbose: If True, print debug information during action selection
+        """
         self.domains = domains
         self.rules = rules
+        self.verbose = verbose
 
     def get_action(self, observation):
         """
@@ -32,8 +39,9 @@ class FuzzyCartPoleController:
         """
         cart_position, cart_velocity, pole_angle, pole_angular_velocity = observation
 
-        print("Observation:")
-        print(observation)
+        if self.verbose:
+            print("Observation:")
+            print(observation)
 
         # Create values dictionary mapping domains to observation values
         values = {
@@ -46,8 +54,9 @@ class FuzzyCartPoleController:
         # Use the library's built-in inference and defuzzification
         fuzzy_output = self.rules(values)
 
-        print("Fuzzy output:")
-        print(fuzzy_output)
+        if self.verbose:
+            print("Fuzzy output:")
+            print(fuzzy_output)
 
         # Handle case where no rules fired
         if fuzzy_output is None:
