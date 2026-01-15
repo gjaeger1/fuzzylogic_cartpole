@@ -42,11 +42,10 @@ def get_standard_domains():
     action.right = triangular(0.5, 0.9, c=0.75)
     action.strong_right = R(0.75, 1.0)
 
-    return [position, velocity, angle, angular_velocity, action]
+    return position, velocity, angle, angular_velocity, action
 
 
-def get_standard_rules():
-    position, velocity, angle, angular_velocity, action = get_standard_domains()
+def get_standard_rules(position, velocity, angle, angular_velocity, action):
     rules = Rule(
         {
             # Complete rule base covering all 81 combinations (3^4)
@@ -564,10 +563,15 @@ class FuzzyCartPoleController:
     the cart position, cart velocity, pole angle, and pole angular velocity.
     """
 
-    def __init__(self, domains=get_standard_domains(), rules=get_standard_rules()):
+    def __init__(self, domains=None, rules=None):
         """Initialize the fuzzy logic controller with membership functions and rules."""
         self.domains = domains
         self.rules = rules
+
+        # if we are not initialized, that is, if either domains or rules is none, we set up standard rules
+        if self.domains is None or self.rules is None:
+            self.domains = get_standard_domains()
+            self.rules = get_standard_rules(*self.domains)
 
     def get_action(self, observation):
         """
@@ -583,10 +587,6 @@ class FuzzyCartPoleController:
 
         print("Observation:")
         print(observation)
-        position = Domain("position", -4.8, 4.8, res=0.01)
-        position.negative = S(-1.0, 0)  # S(-
-        position.zero = triangular(-0.5, 0.5, c=0.0)
-        position.positive = R(0, 1.0)  # R(0, 4.0)
 
         # Create values dictionary mapping domains to observation values
         values = {
