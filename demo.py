@@ -6,7 +6,11 @@ This script creates a CartPole-v1 environment and runs it using the fuzzy logic 
 
 import gymnasium as gym
 
-from fuzzylogic_cartpole import FuzzyCartPoleController
+from fuzzylogic_cartpole import (
+    FuzzyCartPoleController,
+    get_standard_domains,
+    get_standard_rules,
+)
 
 
 def run_episode(env, controller, render=False):
