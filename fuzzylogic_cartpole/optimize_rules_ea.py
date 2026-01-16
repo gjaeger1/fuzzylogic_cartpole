@@ -7,6 +7,7 @@ import itertools
 import os
 import sys
 from pathlib import Path
+from typing import Any, Callable, List, Optional, Tuple
 
 import gymnasium as gym
 import numpy as np
@@ -32,7 +33,9 @@ from .rule_base_generation import (
 ##############################
 
 
-def get_input_combinations(domains, input_domain_names):
+def get_input_combinations(
+    domains: Tuple, input_domain_names: List[str]
+) -> List[Tuple]:
     """Generate all possible combinations of input fuzzy sets.
 
     Args:
@@ -58,7 +61,7 @@ def get_input_combinations(domains, input_domain_names):
     return all_combinations
 
 
-def get_output_fuzzy_sets(output_domain):
+def get_output_fuzzy_sets(output_domain: Any) -> List[str]:
     """Get ordered list of output fuzzy sets from a domain.
 
     Args:
@@ -71,7 +74,12 @@ def get_output_fuzzy_sets(output_domain):
     return list(output_domain._sets.keys())
 
 
-def decode_genome_to_rules(genome, domains, input_domain_names, output_domain_name):
+def decode_genome_to_rules(
+    genome: np.ndarray,
+    domains: Tuple,
+    input_domain_names: List[str],
+    output_domain_name: str,
+) -> List[dict]:
     """Convert integer genome to rule specifications.
 
     Args:
@@ -118,8 +126,12 @@ def decode_genome_to_rules(genome, domains, input_domain_names, output_domain_na
 
 
 def genome_to_controller(
-    genome, domains, input_domain_names, output_domain_name, verbose=False
-):
+    genome: np.ndarray,
+    domains: Tuple,
+    input_domain_names: List[str],
+    output_domain_name: str,
+    verbose: bool = False,
+) -> FuzzyCartPoleController:
     """Convert genome to a FuzzyCartPoleController.
 
     Args:
@@ -152,8 +164,12 @@ def genome_to_controller(
 
 
 def evaluate_controller(
-    controller, environment, num_episodes=5, max_steps=500, render=False
-):
+    controller: FuzzyCartPoleController,
+    environment: gym.Env,
+    num_episodes: int = 5,
+    max_steps: int = 500,
+    render: bool = False,
+) -> float:
     """Evaluate a fuzzy controller in the CartPole environment.
 
     Args:
@@ -195,13 +211,13 @@ def evaluate_controller(
 
 
 def create_fitness_function(
-    domain_specs,
-    fuzzy_set_specs,
-    input_domain_names,
-    output_domain_name,
-    num_episodes=5,
-    max_steps=500,
-):
+    domain_specs: List[dict],
+    fuzzy_set_specs: List[dict],
+    input_domain_names: List[str],
+    output_domain_name: str,
+    num_episodes: int = 5,
+    max_steps: int = 500,
+) -> Callable[[np.ndarray], float]:
     """Create a fitness function for evaluating genomes.
 
     Args:
@@ -216,7 +232,7 @@ def create_fitness_function(
         function: Fitness function that takes a genome and returns fitness
     """
 
-    def fitness_function(genome):
+    def fitness_function(genome: np.ndarray) -> float:
         """Evaluate fitness of a genome."""
         # Recreate domains inside the function to avoid serialization issues
         domains = generate_domains(domain_specs)
@@ -247,7 +263,7 @@ def create_fitness_function(
 ##############################
 
 
-def build_probes(genomes_file=None):
+def build_probes(genomes_file: Optional[Any] = None) -> List:
     """Set up probes for writing results to file and terminal."""
     probes = []
 
@@ -280,13 +296,13 @@ def build_probes(genomes_file=None):
 
 
 def create_initial_genome_from_specs(
-    domains,
-    input_domain_names,
-    output_domain_name,
-    initial_rule_specs,
-    default_output_name,
-    num_rules,
-):
+    domains: Tuple,
+    input_domain_names: List[str],
+    output_domain_name: str,
+    initial_rule_specs: List[dict],
+    default_output_name: str,
+    num_rules: int,
+) -> np.ndarray:
     """Create initial genome based on provided rule specifications.
 
     Args:
@@ -338,22 +354,22 @@ def create_initial_genome_from_specs(
 
 
 def optimize_fuzzy_rules(
-    domain_specs,
-    fuzzy_set_specs,
-    input_domain_names,
-    output_domain_name,
-    pop_size=20,
-    generations=50,
-    num_episodes=3,
-    max_steps=500,
-    mutation_rate=0.15,
-    use_initial_seed=False,
-    initial_rule_specs=None,
-    default_output_name=None,
-    output_file="optimized_rules.csv",
-    yaml_file="optimized_rules.yaml",
-    use_parallel=True,
-):
+    domain_specs: List[dict],
+    fuzzy_set_specs: List[dict],
+    input_domain_names: List[str],
+    output_domain_name: str,
+    pop_size: int = 20,
+    generations: int = 50,
+    num_episodes: int = 3,
+    max_steps: int = 500,
+    mutation_rate: float = 0.15,
+    use_initial_seed: bool = False,
+    initial_rule_specs: Optional[List[dict]] = None,
+    default_output_name: Optional[str] = None,
+    output_file: str = "optimized_rules.csv",
+    yaml_file: str = "optimized_rules.yaml",
+    use_parallel: bool = True,
+) -> None:
     """Optimize fuzzy rule base using evolutionary algorithm.
 
     Args:
@@ -438,7 +454,7 @@ def optimize_fuzzy_rules(
     # Track best individual
     best_individual = {"genome": None, "fitness": float("-inf")}
 
-    def track_best(population):
+    def track_best(population: List) -> List:
         """Probe to track the best individual across all generations."""
         best = max(population, key=lambda ind: ind.fitness)
         if best.fitness > best_individual["fitness"]:
@@ -446,7 +462,7 @@ def optimize_fuzzy_rules(
             best_individual["fitness"] = best.fitness
         return population
 
-    def run_evolution(client=None):
+    def run_evolution(client: Optional[Client] = None) -> None:
         """Run the evolutionary algorithm."""
         with open(output_file, "w") as genomes_file:
             # Create initializer
