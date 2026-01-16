@@ -127,7 +127,8 @@ def decode_genome_to_rules(
 
 def genome_to_controller(
     genome: np.ndarray,
-    domains: Tuple,
+    domain_specs: List[dict],
+    fuzzy_set_specs: List[dict],
     input_domain_names: List[str],
     output_domain_name: str,
     verbose: bool = False,
@@ -144,6 +145,11 @@ def genome_to_controller(
     Returns:
         FuzzyCartPoleController: Controller with rules encoded by genome
     """
+
+    # Recreate domains inside the function to avoid serialization issues
+    domains = generate_domains(domain_specs)
+    domains = generate_fuzzy_sets(domains, fuzzy_set_specs)
+
     # Decode genome to rule specifications
     rule_specs = decode_genome_to_rules(
         genome, domains, input_domain_names, output_domain_name
@@ -234,16 +240,18 @@ def create_fitness_function(
 
     def fitness_function(genome: np.ndarray) -> float:
         """Evaluate fitness of a genome."""
-        # Recreate domains inside the function to avoid serialization issues
-        domains = generate_domains(domain_specs)
-        domains = generate_fuzzy_sets(domains, fuzzy_set_specs)
 
         # Create environment (no rendering for parallel workers)
         env = gym.make("CartPole-v1", render_mode=None)
 
         # Convert genome to controller
         controller = genome_to_controller(
-            genome, domains, input_domain_names, output_domain_name, verbose=False
+            genome,
+            domain_specs,
+            fuzzy_set_specs,
+            input_domain_names,
+            output_domain_name,
+            verbose=False,
         )
 
         # Evaluate controller
