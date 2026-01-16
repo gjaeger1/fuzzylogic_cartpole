@@ -495,7 +495,8 @@ def optimize_fuzzy_rules(
                     bounds=np.array([[0, num_outputs - 1]] * num_rules),
                     expected_num_mutations=int(num_rules * mutation_rate),
                 ),
-                ops.UniformCrossover(p_swap=0.1),
+                ops.NAryCrossover(num_points=4),
+                # ops.UniformCrossover(p_swap=0.1),
             ]
 
             # Add evaluation operator
