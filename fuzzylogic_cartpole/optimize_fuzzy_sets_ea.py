@@ -556,10 +556,10 @@ if __name__ == "__main__":
         output_file="optimized_fuzzy_sets.yaml",
         use_initial_seed=True,  # Start from standard fuzzy sets
         pop_size=20,
-        generations=50,
-        mutation_std=0.01,
-        episodes_per_eval=3,
-        max_steps=500,
+        generations=150,
+        mutation_std=0.005,
+        episodes_per_eval=5,
+        max_steps=1500,
         use_parallel=True,  # Set to True for parallel evaluation
         n_workers=4,
         log_file="fuzzy_sets_ea_log.csv",
