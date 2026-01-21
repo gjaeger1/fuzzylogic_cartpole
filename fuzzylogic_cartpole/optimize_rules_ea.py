@@ -367,7 +367,7 @@ def optimize_fuzzy_rules(
     input_domain_names: List[str],
     output_domain_name: str,
     pop_size: int = 20,
-    generations: int = 50,
+    generations: int = 150,
     num_episodes: int = 3,
     max_steps: int = 500,
     mutation_rate: float = 0.15,
@@ -495,8 +495,8 @@ def optimize_fuzzy_rules(
                     bounds=np.array([[0, num_outputs - 1]] * num_rules),
                     expected_num_mutations=int(num_rules * mutation_rate),
                 ),
-                ops.NAryCrossover(num_points=4),
-                # ops.UniformCrossover(p_swap=0.1),
+                #ops.NAryCrossover(num_points=4),
+                ops.UniformCrossover(p_swap=0.1),
             ]
 
             # Add evaluation operator
@@ -587,7 +587,7 @@ if __name__ == "__main__":
         generations = 2
         pop_size = 5
     else:
-        generations = 50
+        generations = 300
         pop_size = 20
 
     # Get specifications
@@ -606,9 +606,9 @@ if __name__ == "__main__":
         output_domain_name=output_domain_name,
         pop_size=pop_size,
         generations=generations,
-        num_episodes=3,
-        max_steps=500,
-        mutation_rate=0.15,
+        num_episodes=5,
+        max_steps=1500,
+        mutation_rate=0.075,
         use_initial_seed=False,  # Set to False for random initialization
         initial_rule_specs=initial_rule_specs,
         default_output_name="nothing",
