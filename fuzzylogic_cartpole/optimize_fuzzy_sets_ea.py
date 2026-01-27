@@ -528,7 +528,7 @@ if __name__ == "__main__":
     print("while keeping the rule base fixed.\n")
 
     # First, create a rule base file if it doesn't exist
-    rule_base_file = "optimized_rules_working.yaml"
+    rule_base_file = "optimized_rules.yaml"
 
     if not os.path.exists(rule_base_file):
         print(f"Creating initial rule base file: {rule_base_file}")

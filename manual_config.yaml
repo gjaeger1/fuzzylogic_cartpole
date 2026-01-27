@@ -1,0 +1,486 @@
+domains:
+- name: position
+  min: -4.8
+  max: 4.8
+  res: 0.01
+- name: velocity
+  min: -4.0
+  max: 4.0
+  res: 0.01
+- name: angle
+  min: -0.5
+  max: 0.5
+  res: 0.01
+- name: angular_velocity
+  min: -4.0
+  max: 4.0
+  res: 0.01
+- name: action
+  min: 0.0
+  max: 1.0
+  res: 0.01
+fuzzy_sets:
+- domain: position
+  name: negative
+  function: S
+  param1: -1.0
+  param2: 0
+- domain: position
+  name: zero
+  function: triangular
+  param1: -0.5
+  param2: 0.5
+- domain: position
+  name: positive
+  function: R
+  param1: 0
+  param2: 1.0
+- domain: velocity
+  name: negative
+  function: S
+  param1: -4.0
+  param2: -0.5
+- domain: velocity
+  name: zero
+  function: triangular
+  param1: -1.0
+  param2: 1.0
+- domain: velocity
+  name: positive
+  function: R
+  param1: 0.5
+  param2: 4.0
+- domain: angle
+  name: negative
+  function: S
+  param1: -0.5
+  param2: -0.05
+- domain: angle
+  name: zero
+  function: triangular
+  param1: -0.1
+  param2: 0.1
+- domain: angle
+  name: positive
+  function: R
+  param1: 0.05
+  param2: 0.5
+- domain: angular_velocity
+  name: negative
+  function: S
+  param1: -4.0
+  param2: -0.5
+- domain: angular_velocity
+  name: zero
+  function: triangular
+  param1: -0.5
+  param2: 0.5
+- domain: angular_velocity
+  name: positive
+  function: R
+  param1: 0.5
+  param2: 4.0
+- domain: action
+  name: strong_left
+  function: S
+  param1: 0.0
+  param2: 0.25
+- domain: action
+  name: left
+  function: triangular
+  param1: 0.1
+  param2: 0.5
+- domain: action
+  name: nothing
+  function: triangular
+  param1: 0.425
+  param2: 0.575
+- domain: action
+  name: right
+  function: triangular
+  param1: 0.5
+  param2: 0.9
+- domain: action
+  name: strong_right
+  function: R
+  param1: 0.75
+  param2: 1.0
+rules:
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.negative
+  - angle.negative
+  - angular_velocity.negative
+  output: strong_left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.negative
+  - angle.negative
+  - angular_velocity.zero
+  output: left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.negative
+  - angle.zero
+  - angular_velocity.negative
+  output: left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.negative
+  - angle.zero
+  - angular_velocity.zero
+  output: left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.negative
+  - angle.positive
+  - angular_velocity.zero
+  output: left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.negative
+  - angle.positive
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.zero
+  - angle.negative
+  - angular_velocity.negative
+  output: left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.zero
+  - angle.negative
+  - angular_velocity.zero
+  output: left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.zero
+  - angle.zero
+  - angular_velocity.negative
+  output: left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.zero
+  - angle.zero
+  - angular_velocity.zero
+  output: left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.zero
+  - angle.zero
+  - angular_velocity.positive
+  output: left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.zero
+  - angle.positive
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.positive
+  - angle.negative
+  - angular_velocity.negative
+  output: strong_left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.positive
+  - angle.negative
+  - angular_velocity.zero
+  output: left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.positive
+  - angle.negative
+  - angular_velocity.positive
+  output: left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.positive
+  - angle.zero
+  - angular_velocity.negative
+  output: left
+- output_domain: action
+  inputs:
+  - position.negative
+  - velocity.positive
+  - angle.zero
+  - angular_velocity.zero
+  output: left
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.negative
+  - angle.negative
+  - angular_velocity.negative
+  output: strong_left
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.negative
+  - angle.negative
+  - angular_velocity.zero
+  output: left
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.negative
+  - angle.negative
+  - angular_velocity.positive
+  output: left
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.negative
+  - angle.zero
+  - angular_velocity.negative
+  output: left
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.negative
+  - angle.zero
+  - angular_velocity.zero
+  output: left
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.negative
+  - angle.zero
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.negative
+  - angle.positive
+  - angular_velocity.zero
+  output: left
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.negative
+  - angle.positive
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.zero
+  - angle.negative
+  - angular_velocity.negative
+  output: left
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.zero
+  - angle.negative
+  - angular_velocity.zero
+  output: left
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.zero
+  - angle.zero
+  - angular_velocity.negative
+  output: left
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.zero
+  - angle.zero
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.zero
+  - angle.positive
+  - angular_velocity.zero
+  output: right
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.zero
+  - angle.positive
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.positive
+  - angle.zero
+  - angular_velocity.zero
+  output: right
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.positive
+  - angle.zero
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.positive
+  - angle.positive
+  - angular_velocity.zero
+  output: right
+- output_domain: action
+  inputs:
+  - position.zero
+  - velocity.positive
+  - angle.positive
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.negative
+  - angle.negative
+  - angular_velocity.zero
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.negative
+  - angle.negative
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.negative
+  - angle.zero
+  - angular_velocity.zero
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.negative
+  - angle.zero
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.negative
+  - angle.positive
+  - angular_velocity.zero
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.negative
+  - angle.positive
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.zero
+  - angle.negative
+  - angular_velocity.negative
+  output: left
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.zero
+  - angle.zero
+  - angular_velocity.negative
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.zero
+  - angle.zero
+  - angular_velocity.zero
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.zero
+  - angle.zero
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.zero
+  - angle.positive
+  - angular_velocity.zero
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.zero
+  - angle.positive
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.positive
+  - angle.negative
+  - angular_velocity.negative
+  output: left
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.positive
+  - angle.negative
+  - angular_velocity.zero
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.positive
+  - angle.zero
+  - angular_velocity.negative
+  output: left
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.positive
+  - angle.zero
+  - angular_velocity.zero
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.positive
+  - angle.zero
+  - angular_velocity.positive
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.positive
+  - angle.positive
+  - angular_velocity.zero
+  output: right
+- output_domain: action
+  inputs:
+  - position.positive
+  - velocity.positive
+  - angle.positive
+  - angular_velocity.positive
+  output: strong_right

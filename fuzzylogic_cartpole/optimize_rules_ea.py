@@ -587,7 +587,7 @@ if __name__ == "__main__":
         generations = 2
         pop_size = 5
     else:
-        generations = 300
+        generations = 100
         pop_size = 20
 
     # Get specifications
